@@ -1,0 +1,42 @@
+/* Change these four variables to personalize the palette. */
+:root { --purple: #6533a5; --deep: #28183e; --red: #dc2134; --yellow: #f2c94c; --muted: #706780; --line: #e8e0f0; --orange: #b4732c; }
+.site-shell { min-height: 100vh; } header, main, footer { max-width: 1140px; padding-inline: 28px; margin-inline: auto; }
+header { min-height: 90px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--orange); } header small { color: var(--muted); }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--deep); text-decoration: none; font-size: 20px; font-weight: 800; letter-spacing: -.04em; }.brand-icon { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 10px; background: var(--purple); color: white; font-size: 26px; }
+.intro { max-width: 750px; padding: 72px 0 48px; }.eyebrow { color: var(--red); font-weight: 800; letter-spacing: .12em; font-size: 12px; }h1 { font-size: clamp(42px, 6vw, 70px); letter-spacing: -.055em; line-height: 1.08; margin: 18px 0; }h1 em { color: var(--purple); font-style: normal; }.intro p { color: var(--muted); font-size: 17px; line-height: 1.7; max-width: 620px; margin: 0; }
+.workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.12fr); gap: 22px; }.panel { min-width: 0; background: white; border: 1px solid var(--line); border-radius: 20px; padding: 30px; box-shadow: 0 15px 50px #38215a0b; }.panel-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--purple); font-size: 11px; letter-spacing: .1em; font-weight: 800; }.badge { background: #fff5d5; color: #79580a; padding: 8px 11px; border-radius: 100px; font-size: 10px; letter-spacing: .08em; font-weight: 800; }.panel h2 { font-size: 26px; letter-spacing: -.04em; margin: 25px 0 8px; }.panel p { color: var(--muted); line-height: 1.6; font-size: 14px; margin: 0 0 22px; }
+.drop { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 9px; min-height: 235px; border: 2px dashed #cdb6e5; border-radius: 14px; background: #fcfaff; text-align: center; padding: 20px; }.upload-icon { width: 45px; height: 45px; border-radius: 13px; background: #ede2fb; color: var(--purple); display: grid; place-items: center; font-size: 29px; font-weight: 700; }.drop strong { font-size: 14px; overflow-wrap: anywhere; max-width: 100%; }.drop small { color: var(--muted); }.browse { border: 1px solid #cbb5e0; background: white; color: var(--purple); padding: 9px 18px; border-radius: 9px; font-weight: 700; font-size: 13px; }.browse:hover { background: #f2eafa; }.analyze { width: 100%; margin-top: 18px; padding: 15px 18px; border: 0; border-radius: 10px; color: white; background: var(--purple); display: flex; justify-content: space-between; font-weight: 750; }.analyze:hover:not(:disabled) { background: #4f2584; }.analyze:disabled { opacity: .5; cursor: not-allowed; }.panel .fine-print { font-size: 12px; text-align: center; margin: 13px 0 0; }.panel .error { color: #b02e40; margin: 9px 0 0; }.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.empty { border-style: dashed; background: #f4edfd; min-height: 490px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }.magnify { color: var(--purple); font-size: 70px; line-height: 1; }.empty h2 { font-size: 22px; margin: 15px 0 9px; }.empty p { max-width: 310px; }.empty .badge { background: #e9dbfa; color: var(--purple); }.results > p strong { color: var(--deep); overflow-wrap: anywhere; }.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }.group { min-width: 0; border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: #faf8ff; }.group h3 { font-size: 14px; margin: 0 0 10px; }.group h3 span { color: var(--red); font-size: 10px; }.group ul { list-style: none; padding: 0; margin: 0; }.group li { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 5px; overflow-wrap: anywhere; }details { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 15px; }summary { cursor: pointer; color: var(--purple); font-weight: 700; font-size: 13px; }pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f7f3fc; padding: 14px; border-radius: 9px; line-height: 1.6; font-size: 11px; }
+.steps { padding: 70px 0; }.steps h2 { font-size: 24px; letter-spacing: -.04em; }.step-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }.step-grid > div { border-top: 2px solid var(--orange); padding-top: 18px; }.step-grid b { color: var(--red); font-size: 13px; }.step-grid h3 { margin: 10px 0 5px; }.step-grid p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }footer { border-top: 1px solid var(--orange); padding-block: 25px; color: var(--muted); font-size: 12px; }
+@media (max-width: 760px) { header, main, footer { padding-inline: 18px; }header small { display: none; }.intro { padding: 50px 0 35px; }.workspace, .step-grid { grid-template-columns: 1fr; }.empty { min-height: 300px; }.steps { padding: 50px 0; } }
+@media (max-width: 420px) { .panel { padding: 21px; }.result-grid { grid-template-columns: 1fr; } }
+
+/* DARK THEME: edit these variables to add your own flair. */
+:root { --purple: #c7a8e8; --deep: #faf6ff; --red: #fb4251; --yellow: #f2c94c; --muted: #d0c5dc; --line: #554a66; }
+.brand-icon { background: #50415f; padding: 5px; object-fit: contain; }
+.panel { background: #3c334a; box-shadow: 0 15px 50px #00000015; }
+.empty { background: #382f45; }
+.drop { background: #332c40; border-color: #867297; }
+.upload-icon { background: #aa8dc4; color: #f1d02a; }
+.browse { background: #463950; border-color: #9380a3; color: #fff; }
+.browse:hover { background: #574464; }
+.analyze { background: #b893d8; color: #22162f; }
+.analyze:hover:not(:disabled) { background: #d2b3ec; }
+.badge { background: #f2c94c; color: #362b0d; }
+.empty .badge { background: #554567; color: #f0ddff; }
+.group, pre { background: #332b40; }
+.panel .error, .error { color: #ff9ba5; }
+.workflow-message { padding: 15px 20px; border: 1px solid var(--line); border-radius: 10px; }
+button:disabled { cursor: not-allowed; }
+@media (max-width: 420px) { .brand { font-size: 18px; } }
+
+.parser-notes { margin-top: 18px; border-left: 3px solid var(--yellow); padding: 4px 14px; }
+.parser-notes h3 { font-size: 14px; margin: 5px 0; }
+.parser-notes ul { padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+/* DeployedV1 branding */
+.brand-name { white-space: nowrap; }
+.brand-hyphen { color: var(--yellow); }
+.brand-my { color: #a47bc7; }
+.tagline, .tagline em { color: var(--purple); }
+.tagline .tagline-resume { color: #ffffff; }
