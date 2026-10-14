@@ -1,31 +1,8 @@
 # Peep-My-Resume — DeployedV1
 
-A test-ready résumé X-Ray. Upload a text-based PDF or DOCX, click **Analyze résumé**, and see actual extracted text grouped into Contact, Experience, Education, and Skills. Your wording and purple/red/yellow frontend are preserved. This version uses pdfplumber and python-docx, not pyresume or an AI API.
+A test-ready résumé X-Ray. Upload a text-based PDF or DOCX, click **Analyze résumé**, and see actual extracted text grouped into Contact, Experience, Education, and Skills. Your wording and purple/red/yellow frontend are preserved. This version uses pdfplumber and python-docx.
 
-## Start on Windows in VS Code
 
-Install Python 3.10+ (Python 3.12 recommended) and Node.js 22.12+ first. Open **this project folder** in VS Code; it contains both `package.json` and `requirements.txt`.
-
-**Terminal 1 — backend:**
-
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Using the virtual environment's Python directly avoids PowerShell activation-policy problems. Leave this terminal running. If `py` is unavailable, use `python` for the first command.
-
-**Terminal 2 — frontend:**
-
-```powershell
-npm install
-npm run dev
-```
-
-Open the exact **Local** URL printed by Vite, usually http://localhost:5173. Leave both terminals running. No `.env` file is needed for normal local testing. If you copied an old `.env.local`, remove it or set `VITE_USE_MOCK=false` and leave `VITE_API_BASE_URL` empty, then restart Vite.
-
-On macOS/Linux use `python3 -m venv .venv`, then `.venv/bin/python` in place of `.\.venv\Scripts\python.exe`.
 
 ## How everything connects
 
@@ -59,36 +36,8 @@ The backend returns JSON matching `src/types/ParseResult.ts`: arrays named `cont
 **Could not reach parser / request failed:** confirm Terminal 1 is running, check `/health`, and restart Vite after updating configuration. Port 8000 must be free.
 
 ## Checks
-
-From the project root:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-npm run build
-npm run lint
-```
-
 Seven backend test methods cover PDF/DOCX uploads, missing headings, section boundaries, corrupted/unsupported/empty uploads, size limits, missing file fields, and health. These passed in the build environment. TypeScript/Vite build and ESLint also passed. A full interactive browser test was not available in that environment, so please do the first-test sequence above locally.
 
-## Deploy to Render
-
-This is the deployment-ready DeployedV1 package. It is not yet hosted: a Render deployment must be created from your GitHub repository before a public URL exists.
-
-### How the hosted version works
-
-Render builds the Dockerfile in two stages. Node builds React into static HTML, CSS, and JavaScript. The Python stage installs the parser dependencies and copies that build into `dist`. One FastAPI service then serves both the website and `/parse`, using Render's assigned `PORT`. Your browser uploads to the same HTTPS host, so you do not need a separate frontend host, CORS setup, or an API URL setting. Your local Python and npm servers can be turned off once deployment succeeds.
-
-### Optional Docker test
-
-```sh
-docker build -t peep-my-resume-deployedv1 .
-docker run --rm -p 8000:8000 peep-my-resume-deployedv1
-```
-
-Then open http://localhost:8000. Docker is unavailable in the preparation environment, so the container build must be confirmed by Render's build logs or on your own machine. The React production build and same-host FastAPI behavior were checked separately.
-
-Official instructions: https://render.com/docs/docker and https://render.com/docs/blueprint-spec. Free-tier behavior: https://render.com/docs/free.
 
 ## Licensing
 
