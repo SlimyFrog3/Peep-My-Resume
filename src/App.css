@@ -11,25 +11,6 @@ header { min-height: 90px; display: flex; align-items: center; justify-content: 
 @media (max-width: 760px) { header, main, footer { padding-inline: 18px; }header small { display: none; }.intro { padding: 50px 0 35px; }.workspace, .step-grid { grid-template-columns: 1fr; }.empty { min-height: 300px; }.steps { padding: 50px 0; } }
 @media (max-width: 420px) { .panel { padding: 21px; }.result-grid { grid-template-columns: 1fr; } }
 
-/* DARK THEME: edit these variables to add your own flair. */
-:root { --purple: #c7a8e8; --deep: #faf6ff; --red: #fb4251; --yellow: #f2c94c; --muted: #d0c5dc; --line: #554a66; }
-.brand-icon { background: #50415f; padding: 5px; object-fit: contain; }
-.panel { background: #3c334a; box-shadow: 0 15px 50px #00000015; }
-.empty { background: #382f45; }
-.drop { background: #332c40; border-color: #867297; }
-.upload-icon { background: #aa8dc4; color: #f1d02a; }
-.browse { background: #463950; border-color: #9380a3; color: #fff; }
-.browse:hover { background: #574464; }
-.analyze { background: #b893d8; color: #22162f; }
-.analyze:hover:not(:disabled) { background: #d2b3ec; }
-.badge { background: #f2c94c; color: #362b0d; }
-.empty .badge { background: #554567; color: #f0ddff; }
-.group, pre { background: #332b40; }
-.panel .error, .error { color: #ff9ba5; }
-.workflow-message { padding: 15px 20px; border: 1px solid var(--line); border-radius: 10px; }
-button:disabled { cursor: not-allowed; }
-@media (max-width: 420px) { .brand { font-size: 18px; } }
-
 .parser-notes { margin-top: 18px; border-left: 3px solid var(--yellow); padding: 4px 14px; }
 .parser-notes h3 { font-size: 14px; margin: 5px 0; }
 .parser-notes ul { padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
@@ -37,6 +18,26 @@ button:disabled { cursor: not-allowed; }
 /* DeployedV1 branding */
 .brand-name { white-space: nowrap; }
 .brand-hyphen { color: var(--yellow); }
-.brand-my { color: #a47bc7; }
+.brand-my { color: #522982; }
 .tagline, .tagline em { color: var(--purple); }
-.tagline .tagline-resume { color: #ffffff; }
+.tagline .tagline-resume { color: var(--deep); }
+
+/* V2: a light theme. Change the palette here to personalize the site. */
+:root { --purple: #6533a5; --deep: #292331; --red: #dc2134; --yellow: #e6b522; --muted: #665d70; --line: #e8e0f0; --orange: #e8e0f0; }
+.brand-icon { padding: 5px; object-fit: contain; }
+.workspace { grid-template-columns: minmax(260px, .7fr) minmax(0, 1.6fr); align-items: start; }
+.panel { background: #fff; }
+.empty { background: #f8f5fc; }
+.result-grid { align-items: start; }
+.group { background: #fff; padding: 20px; }
+.group h3 { font-size: 16px; color: var(--purple); }
+.group li { font-size: 14px; line-height: 1.65; margin-top: 8px; }
+.upload-status { color: var(--purple); margin-top: 16px !important; }
+.workflow-message { padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.workflow-message.error { color: #b02e40; background: #fff4f5; }
+.workflow-message button { margin-left: 12px; }
+.parser-notes { background: #fff9e8; border-radius: 8px; padding: 12px 18px; }
+.parser-notes ul { font-size: 13px; }
+.missing-sections { margin-top: 12px !important; }
+@media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .result-grid { grid-template-columns: 1fr; } .panel { padding: 22px; } .intro { padding-top: 40px; } }

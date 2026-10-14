@@ -5,11 +5,11 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from .parser import parse_resume, ParseError, MAX_BYTES
 
-app = FastAPI(title='Peep-My-Resume API', version='1.0.0')
+app = FastAPI(title='Peep-My-Resume API', version='2.0.0')
 
 @app.get('/health')
 def health():
-    return {'status': 'ok', 'version': '1.0.0'}
+    return {'status': 'ok', 'version': '2.0.0'}
 
 @app.post('/parse')
 async def parse(file: UploadFile = File(...)):

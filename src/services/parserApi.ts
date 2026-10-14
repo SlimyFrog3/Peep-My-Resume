@@ -1,4 +1,4 @@
-import type { ParseResult } from '../types/ParseResult'
+import { sections, type ParseResult } from '../types/ParseResult'
 import { sampleResult } from '../sampleResult'
 
 export const demoMode = import.meta.env.VITE_USE_MOCK === 'true'
@@ -6,13 +6,13 @@ export const demoMode = import.meta.env.VITE_USE_MOCK === 'true'
 function isParseResult(value: unknown): value is ParseResult {
   if (!value || typeof value !== 'object') return false
   const data = value as Record<string, unknown>
-  return ['contact', 'experience', 'education', 'skills'].every(key =>
+  return sections.every(([key]) =>
     Array.isArray(data[key]) && data[key].every(item => typeof item === 'string')
-  ) && typeof data.extractedText === 'string'
+  ) && typeof data.extractedText === 'string' && Array.isArray(data.warnings) && data.warnings.every(item => typeof item === 'string')
 }
 
-// Only this function knows whether results come from a mock or our future service.
-export async function parseResume(file: File): Promise<ParseResult> {
+// The caller can cancel when a new file replaces an in-flight upload.
+export async function parseResume(file: File, signal?: AbortSignal): Promise<ParseResult> {
   if (demoMode) {
     await new Promise(resolve => setTimeout(resolve, 450))
     return sampleResult
@@ -20,6 +20,9 @@ export async function parseResume(file: File): Promise<ParseResult> {
   const body = new FormData()
   body.append('file', file)
   const controller = new AbortController()
+  const cancel = () => controller.abort()
+  signal?.addEventListener('abort', cancel, { once: true })
+  if (signal?.aborted) controller.abort()
   const timeout = window.setTimeout(() => controller.abort(), 90000)
   try {
     const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
@@ -38,6 +41,7 @@ export async function parseResume(file: File): Promise<ParseResult> {
     if (error instanceof TypeError) throw new Error('Could not reach the parser service. Check that it is running.', { cause: error })
     throw error
   } finally {
+    signal?.removeEventListener('abort', cancel)
     window.clearTimeout(timeout)
   }
 }
