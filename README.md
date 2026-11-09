@@ -1,4 +1,8 @@
-# Peep-My-Resume V2.0.1
+# Peep-My-Resume Beta 3.0.0
+
+## Beta 3.0.0
+
+See [patch notes](PATCH_NOTES_BETA_3.md) and [redeployment steps](REDEPLOY.md). The X-Ray has color-coded Parse Check feedback and source-backed job, education, credential, and link records. Test with examples/beta-sidebar.pdf. The API keeps the section arrays and adds parseCheck, workExperience, unassignedExperience, educationRecords, certificationRecords, and linkRecords. /health reports 3.0.0-beta.
 
 A simple React/TypeScript frontend and Python/FastAPI resume parser. Choose a text-based PDF or DOCX and analysis starts immediately. Results show detected sections and the extracted text so you can compare against the original. Real parsing is the default; no AI API or database is used.
 

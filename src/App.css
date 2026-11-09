@@ -41,3 +41,20 @@ header { min-height: 90px; display: flex; align-items: center; justify-content: 
 .missing-sections { margin-top: 12px !important; }
 @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .result-grid { grid-template-columns: 1fr; } .panel { padding: 22px; } .intro { padding-top: 40px; } }
+
+/* Parse Check stays near the result title; the label conveys the state without color. */
+.parse-check { --status-color: #17623e; --status-bg: #edf8f1; --status-border: #b8dcc8; background: var(--status-bg); color: var(--status-color); border: 1px solid var(--status-border); border-radius: 12px; padding: 14px 16px; margin: 12px 0 18px; overflow-wrap: anywhere; }
+.parse-check--needs_review { --status-color: #775000; --status-bg: #fff7db; --status-border: #eed48e; }
+.parse-check--could_not_assess { --status-color: #9a2437; --status-bg: #fff0f2; --status-border: #f0bec8; }
+.parse-check-title { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 14px; row-gap: 4px; font-size: 13px; font-weight: 700; }
+.parse-check-title strong { font-size: 17px; }
+.parse-check p, .parse-check ul { color: inherit; margin: 7px 0; font-size: 14px; line-height: 1.55; }
+.parse-check ul { padding-left: 20px; }
+.parse-check small, .record small { font-size: 12px; }
+.group--wide { grid-column: 1 / -1; }
+.record { padding: 13px 0; overflow-wrap: anywhere; }
+.record + .record { border-top: 1px solid var(--line); }
+.record h4 { margin: 0 0 5px; color: var(--deep); }
+.record p { margin: 0 0 6px; }
+.record-source { border: 0; padding-top: 0; margin-top: 10px; }
+.parser-notes summary { margin-block: 4px; }

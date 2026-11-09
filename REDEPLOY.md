@@ -1,23 +1,9 @@
-# Redeploy V2.0.1 using your existing GitHub + Render service
+# Redeploy Beta 3.0.0 on GitHub + Render
 
-1. Download and extract the V2 ZIP to a new folder. Back up your existing local files or retain the V1 Git commit.
-2. Copy the extracted contents into your existing repository folder, replacing matching source files. At the repository root you must see `Dockerfile`, `render.yaml`, `package.json`, `src`, and `backend`. Do not put the ZIP or an extra V2 folder into the repository. Keep `.git`; do not copy `node_modules`, `.venv`, `dist`, `.env.local`, or real resumes.
-3. Commit the complete frontend and backend update together, then push to the branch your Render service uses (usually `main`). Updating both together is necessary because V2 expects the expanded response fields.
-4. Open your existing Render **peep-my-resume** web service. On Commit auto-deployment will normally begin after the push. If not, choose **Manual Deploy → Deploy latest commit**. You do not need a new Blueprint or service.
-5. Wait for **Live** and confirm the deployment's commit matches your update. Open your existing public URL and refresh the page.
-6. Open the public URL followed by `/health`. Confirm `{"status":"ok","version":"2.0.1"}`. If it says 1.0.0 or 2.0.0, the old backend is still running.
-7. With local Python/npm servers stopped, select a PDF or DOCX. It should start processing without an Analyze click. Test your resumes and the included example documents. Confirm summary/certifications/etc. appear when detected, and test from a phone.
-8. If the site shows an unexpected results-format error, check that both frontend and backend came from the same V2 commit. If the build fails, copy the relevant Render log error. A sleeping free service can need a minute to wake; retry after it wakes.
+1. Extract the ZIP. Open the extracted folder and copy or upload the **items inside it** to the root of your existing GitHub repository. You should see the updated backend/, src/, Dockerfile, and render.yaml next to each other at the top level. Do not upload the wrapper folder or ZIP. Keep .git and exclude local dependencies, environment files, and real resumes.
+2. Commit the updated frontend and backend together to the branch Render deploys. Verify backend/main.py at the repository root has VERSION = '3.0.0-beta'.
+3. On the existing peep-my-resume service, wait for the commit deploy or use Manual Deploy → Deploy latest commit. Confirm the live deployment shows the correct commit.
+4. Open https://peep-my-resume.onrender.com/health and expect {"status":"ok","version":"3.0.0-beta"}. If it still shows an older version, compare the live commit and check that the updated files are at the build root.
+5. Upload examples/beta-sidebar.pdf. Check the green Parse Check, separate work and education records, full example profile links, and source details. Try your original resume. If testing a malformed PDF, expect a red Couldn't assess state with an error message.
 
-Optional Git commands, from your existing repository after copying files:
-
-```sh
-git status
-git add .
-git commit -m "Add V2 resume sections, auto analysis, and light theme"
-git push
-```
-
-Review `git status` before committing to ensure no personal documents or environment files are included. If using GitHub's upload page instead, upload the extracted project contents to the existing repository root and commit them.
-
-Official deployment controls: https://render.com/docs/deploys
+To run the backend tests locally, install requirements-dev.txt and run python -m unittest discover -s tests -v. For the frontend, run npm ci, npm run build, and npm run lint.

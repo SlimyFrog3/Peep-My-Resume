@@ -7,7 +7,11 @@ export const demoMode = import.meta.env.VITE_USE_MOCK === 'true'
 function isParseResult(value: unknown): value is ParseResult {
   if (!value || typeof value !== 'object') return false
   const data = value as Record<string, unknown>
-  return sections.every(([key]) =>
+  const check = data.parseCheck as Record<string, unknown> | undefined
+  return !!check && ['looks_good', 'needs_review', 'could_not_assess'].includes(String(check.status))
+    && Array.isArray(check.reasons) && check.reasons.every(reason => typeof reason === 'string')
+    && ['workExperience', 'unassignedExperience', 'educationRecords', 'certificationRecords', 'linkRecords'].every(key => Array.isArray(data[key]))
+    && sections.every(([key]) =>
     Array.isArray(data[key]) && data[key].every(item => typeof item === 'string')
   ) && typeof data.extractedText === 'string' && Array.isArray(data.warnings) && data.warnings.every(item => typeof item === 'string')
 }
