@@ -2,6 +2,10 @@
 from io import BytesIO
 import re
 from zipfile import ZipFile, BadZipFile
+from pdfminer.pdfdocument import PDFPasswordIncorrect
+from pdfminer.pdfparser import PDFSyntaxError
+from pdfminer.psparser import PSEOF
+from lxml.etree import XMLSyntaxError
 import pdfplumber
 from docx import Document
 from docx.table import Table
@@ -43,11 +47,12 @@ def read_pdf_page(page):
     A right-aligned date is not sufficient evidence of a second column.
     Full-width opening text stays before both columns.
     """
+    page_left, page_top, page_right, page_bottom = page.bbox
     words = page.extract_words()
     for fraction in (0.5, 0.6, 0.65, 0.7, 0.4, 0.35):
-        split = page.width * fraction
-        left = page.crop((0, 0, split, page.height)).extract_text() or ''
-        right = page.crop((split, 0, page.width, page.height)).extract_text() or ''
+        split = page_left + page.width * fraction
+        left = page.crop((page_left, page_top, split, page_bottom)).extract_text() or ''
+        right = page.crop((split, page_top, page_right, page_bottom)).extract_text() or ''
         if not any(heading_key(line) in ALIASES for line in left.splitlines()):
             continue
         if not any(heading_key(line) in ALIASES for line in right.splitlines()):
@@ -65,7 +70,7 @@ def read_pdf_page(page):
                     starts.append(top)
         if not starts:
             continue
-        start = max(0, min(starts) - 3)
+        start = max(page_top, min(page_bottom, min(starts) - 3))
         body = [w for w in words if w['top'] >= start]
         crossings = [w for w in body if w['x0'] < split < w['x1']]
         if not body or len(crossings) > max(1, len(body) * .015):
@@ -73,13 +78,15 @@ def read_pdf_page(page):
         # Require an actual blank strip, rather than cutting at a word edge.
         if sum(w['x0'] < split + 5 and w['x1'] > split - 5 for w in body) > max(2, len(body) * .03):
             continue
-        header = page.crop((0, 0, page.width, start)).extract_text() if start > 0 else ''
-        left = page.crop((0, start, split, page.height)).extract_text() or ''
-        right = page.crop((split, start, page.width, page.height)).extract_text() or ''
+        header = page.crop((page_left, page_top, page_right, start)).extract_text() if start > page_top else ''
+        left = page.crop((page_left, start, split, page_bottom)).extract_text() or ''
+        right = page.crop((split, start, page_right, page_bottom)).extract_text() or ''
         return '\n'.join(filter(None, [header, left])), right
     return page.extract_text() or '', None
 
-def extract_text(data: bytes, filename: str):
+def extract_text(data: bytes, filename: str, reading_notes=None):
+    if reading_notes is None:
+        reading_notes = []
     if not data:
         raise ParseError('The file is empty. Choose a PDF or DOCX resume.')
     if len(data) > MAX_BYTES:
@@ -94,7 +101,12 @@ def extract_text(data: bytes, filename: str):
                     raise ParseError('Please choose a resume with 20 pages or fewer.')
                 main, sidebar = [], []
                 for page in pdf.pages:
-                    left, right = read_pdf_page(page)
+                    try:
+                        left, right = read_pdf_page(page)
+                    except ValueError:
+                        # Layout analysis is optional. Keep readable documents usable.
+                        left, right = page.extract_text() or '', None
+                        reading_notes.append(f'Page {page.page_number}: layout analysis was unavailable; standard text reading was used. Check the reading order.')
                     main.append(left)
                     if right is not None:
                         sidebar.append(right)
@@ -127,10 +139,14 @@ def extract_text(data: bytes, filename: str):
             raise ParseError('Only PDF and DOCX files are supported.')
     except ParseError:
         raise
-    except Exception as error:
-        raise ParseError('The document could not be read. It may be corrupted or password protected.') from error
+    except PDFPasswordIncorrect as error:
+        raise ParseError('This PDF requires a password to open. Upload an unlocked copy.') from error
+    except (PDFSyntaxError, PSEOF) as error:
+        raise ParseError('The PDF structure could not be read. Try exporting a new PDF from the original document.') from error
+    except (BadZipFile, XMLSyntaxError) as error:
+        raise ParseError('The DOCX contents could not be read. Open the original document and save a new DOCX copy.') from error
     if not text.strip():
-        raise ParseError('No readable text found. Scanned or image-only PDFs need OCR, which version 2 does not support.')
+        raise ParseError('No readable text was extracted. If this is a scan or image, export a text-based document or use OCR before uploading.')
     if len(text) > MAX_TEXT:
         raise ParseError('The document contains too much text for this resume demo.')
     return text
@@ -188,4 +204,7 @@ def group_sections(text: str):
     return {**groups, 'extractedText': text, 'warnings': warnings}
 
 def parse_resume(data: bytes, filename: str):
-    return group_sections(extract_text(data, filename))
+    reading_notes = []
+    result = group_sections(extract_text(data, filename, reading_notes))
+    result['warnings'] = reading_notes + result['warnings']
+    return result

@@ -1,4 +1,5 @@
 import { sections, type ParseResult } from '../types/ParseResult'
+import { requestErrorMessage } from './requestErrors'
 import { sampleResult } from '../sampleResult'
 
 export const demoMode = import.meta.env.VITE_USE_MOCK === 'true'
@@ -23,22 +24,22 @@ export async function parseResume(file: File, signal?: AbortSignal): Promise<Par
   const cancel = () => controller.abort()
   signal?.addEventListener('abort', cancel, { once: true })
   if (signal?.aborted) controller.abort()
-  const timeout = window.setTimeout(() => controller.abort(), 90000)
+  let timedOut = false
+  const timeout = window.setTimeout(() => { timedOut = true; controller.abort() }, 90000)
   try {
     const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
     const response = await fetch(`${baseUrl}/parse`, { method: 'POST', body, signal: controller.signal })
     if (!response.ok) {
-      let message = `Parser request failed (${response.status}). Check that the backend is running.`
       const problem: unknown = await response.json().catch(() => null)
-      if (problem && typeof problem === 'object' && 'detail' in problem && typeof problem.detail === 'string') message = problem.detail
-      throw new Error(message)
+      throw new Error(requestErrorMessage(response.status, problem))
     }
-    const result: unknown = await response.json()
-    if (!isParseResult(result)) throw new Error('The parser returned an unexpected results format.')
+
+    const result: unknown = await response.json().catch(() => null)
+    if (!isParseResult(result)) throw new Error('The service returned an unreadable response. Refresh the page and retry. If it continues, report the issue.')
     return result
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') throw new Error('The parser took too long. Please try again.', { cause: error })
-    if (error instanceof TypeError) throw new Error('Could not reach the parser service. Check that it is running.', { cause: error })
+    if (controller.signal.aborted) throw new Error(timedOut ? 'The request timed out. Please retry; the service may still be starting.' : 'Analysis was canceled.', { cause: error })
+    if (error instanceof TypeError) throw new Error('A network connection to the service could not be completed. Check your connection and try again.', { cause: error })
     throw error
   } finally {
     signal?.removeEventListener('abort', cancel)

@@ -1,44 +1,87 @@
-# Peep-My-Resume — DeployedV1
+# Peep-My-Resume V2.0.1
 
-A test-ready résumé X-Ray. Upload a text-based PDF or DOCX, click **Analyze résumé**, and see actual extracted text grouped into Contact, Experience, Education, and Skills. Your wording and purple/red/yellow frontend are preserved. This version uses pdfplumber and python-docx.
+A simple React/TypeScript frontend and Python/FastAPI resume parser. Choose a text-based PDF or DOCX and analysis starts immediately. Results show detected sections and the extracted text so you can compare against the original. Real parsing is the default; no AI API or database is used.
 
+See **PATCH_NOTES_V2.md** for changes and limitations, and **REDEPLOY.md** to update your existing Render service.
 
+## Local setup in VS Code (Windows)
 
-## How everything connects
+Use Python 3.12 and Node.js 22.12 or newer. Open the folder containing `package.json` and `requirements.txt`.
 
-`ResumeUploader` selects a browser File. `App` stores it in React state. Clicking Analyze calls `parseResume(file)` in `src/services/parserApi.ts`.
+Terminal 1:
 
-That function puts the file in `FormData` and sends a multipart HTTP POST to `/parse`. During development, `vite.config.ts` forwards `/parse` to the Python server at port 8000. This keeps the browser on one origin; no separate CORS setup is required in this configuration.
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-FastAPI receives the upload in `backend/main.py`. It reads up to the 10 MB limit and calls `backend/parser.py` in a worker thread. The parser selects a reader by filename extension and checks the document's format:
+Terminal 2:
 
-- PDF → pdfplumber reads each page's text.
-- DOCX → python-docx reads paragraphs and table cells in document body order.
+```powershell
+npm ci
+npm run dev
+```
 
-The next step walks the extracted lines. Recognized headings such as **Work Experience**, **Education**, and **Technical Skills** change the current section. Following lines belong to that section until another recognized heading appears. It also supports inline headings such as `Skills: Python, SQL`.
+Open the Local URL Vite prints, usually http://localhost:5173. Keep both terminals running. On macOS/Linux use `python3` and `.venv/bin/python`. No `.env` file is required. Remove old `.env.local` settings if you unintentionally see sample results; `VITE_USE_MOCK=true` explicitly enables demo mode.
 
-Summary, Projects, Certifications, and other known headings stop the previous section; their contents remain in raw text but are not displayed as one of the four main groups. The opening text before the first heading is shown as a candidate contact block, up to 12 nonblank lines. We do not infer a person's name or invent missing values.
+## How it connects
 
-The backend returns JSON matching `src/types/ParseResult.ts`: arrays named `contact`, `experience`, `education`, and `skills`, plus `extractedText` and `warnings`. `App` receives it and `ParseResults` renders it. Loading/error states are controlled by App. The API client times out after 90 seconds and reports backend errors. It never silently falls back to mock data in live mode.
+1. `ResumeUploader` validates the selected file and passes it to `App`.
+2. `App` starts the request immediately. It cancels the previous browser request and uses a request number so stale responses cannot replace a newer upload.
+3. `parserApi.ts` sends the file as multipart `FormData` to `/parse`. Vite proxies the request to Python during development. The client allows 90 seconds for a response.
+4. FastAPI reads a bounded upload and runs the parser in a worker thread. It closes the upload after processing.
+5. `pdfplumber` extracts PDF text. The custom layout helper attempts a column split only with headings on both sides and a clear gutter. `python-docx` reads paragraphs and table cells in body order.
+6. The grouping layer matches explicit heading aliases and inline labels. Email, phone, and link patterns find explicit contact details. Unknown content remains in Other / Unclassified. No missing content is invented.
+7. JSON returns arrays for 13 categories, plus `extractedText` and `warnings`. React renders populated categories and lists the categories not detected. "Not detected" does not prove a section is missing.
 
-## Limitations that matter for testing
+## Where to edit
 
-- **For local development, both servers must run.** The hosted Docker version runs the website and parser together.
-- Two-column PDFs may interleave text. Word headers, footers, text boxes, and nested tables are not supported in this first version.
-- Experience/education are grouped lines, not separate structured employer/degree/date records. Skills remain extracted lines rather than inferred proficiency scores.
-- Contact is a candidate opening block, not validated personal data.
-- Maximum upload: 10 MB; PDF: 20 pages; extracted text: 200,000 characters; DOCX expanded archive: 40 MB.
-- Uploads are not saved by application code. FastAPI may temporarily spool uploads, then closes them when the request finishes. There is no database or external AI call.
-- This demonstrates our parser's behavior; it does not reproduce every employer's ATS.
+| File | Purpose |
+|---|---|
+| `backend/parser.py` | Extraction, column heuristic, headings, grouping, warnings |
+| `backend/main.py` | Upload endpoint, health, built frontend serving |
+| `src/types/ParseResult.ts` | Category keys and display titles |
+| `src/services/parserApi.ts` | Request, cancellation, timeout, JSON validation |
+| `src/App.tsx` | Selection, automatic processing, result/error state |
+| `src/components/ResumeUploader.tsx` | Browse/drop UI and file validation |
+| `src/components/ParseResults.tsx` | Cards, not-detected list, warnings, raw text |
+| `src/App.css` / `src/index.css` | Layout and light-theme palette |
+| `public/eye-logo.svg` | Replaceable eye logo |
+| `Dockerfile` / `render.yaml` | Existing single-host Render deployment |
 
-## Troubleshooting
+To add a category, update the backend headings, frontend sections list, and sample result together. To personalize the colors, edit the palette variables near the bottom of App.css. Major UI elements remain separate components; no new frontend library was added.
 
-**Could not reach parser / request failed:** confirm Terminal 1 is running, check `/health`, and restart Vite after updating configuration. Port 8000 must be free.
+## Checks and test documents
 
-## Checks
-Seven backend test methods cover PDF/DOCX uploads, missing headings, section boundaries, corrupted/unsupported/empty uploads, size limits, missing file fields, and health. These passed in the build environment. TypeScript/Vite build and ESLint also passed. A full interactive browser test was not available in that environment, so please do the first-test sequence above locally.
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+npm run build
+npm run lint
+```
 
+All 21 backend tests, the production build, and lint passed during preparation. `examples/simple.pdf` and `.docx` contain synthetic Jordan Lee data. `two-column.pdf` tests separate columns and page continuation; `right-aligned-dates.pdf` checks dates are not treated as a sidebar. Original real-resume PDF/DOCX files were not supplied, so compare your own results after redeployment.
+
+## Production
+
+The Dockerfile builds React in Node and copies `dist` into the Python image. FastAPI serves both the page and `/parse` on one HTTPS origin. There is no separate frontend deployment or CORS setup. Keep Docker runtime and `/health` health check on Render. Docker itself was not available for an image build during preparation; verify Render build logs.
+
+## Limits and privacy
+
+- Text-based documents only; no OCR for scans/images.
+- Heading rules and column heuristics can misread complex layouts. Contact is still a candidate block rather than validated name/location fields.
+- Job and education contents are grouped lines, not fully structured records.
+- Limits: 10 MB upload, 20 PDF pages, 200,000 extracted characters, 40 MB expanded DOCX.
+- Application code does not save uploads. The framework may spool them temporarily and closes them after each request. No external AI call is made.
+- Browser cancellation prevents stale display; backend work may finish even after cancellation.
 
 ## Licensing
 
-pdfplumber and python-docx use MIT licenses. MIT permits commercial use while requiring retention of copyright and permission notices. Their dependencies have their own licenses; `THIRD_PARTY_NOTICES.txt` includes the available license texts for the tested Python components. Preserve the notices and review the exact dependency set used for distribution. No pyresume code is included. The custom grouping code belongs to this project and its intended distribution license should be decided by the project owner.
+The existing pdfplumber and python-docx readers are MIT licensed; their dependency notices remain in `THIRD_PARTY_NOTICES.txt` and are copied into the Docker image. Preserve these notices and review the exact distributed dependency set. The owner decides the distribution license for custom project code.
+
+Browser interaction and visual checks could not be completed because the preparation environment could not download a browser. Verify automatic analysis, file replacement/retry, and phone layout after deployment.
+
+## V2.0.1 maintenance update
+
+See PATCH_NOTES_V2.0.1.md for the PDF page-boundary fix, layout fallback, and more accurate errors. The supplied Aakash PDF now returns HTTP 200 and 13,342 extracted characters in a local API test; it is not included in this package because it contains personal information. ATS_TIPS_PLAN.md describes possible future formatting tips; that feature is not implemented.
