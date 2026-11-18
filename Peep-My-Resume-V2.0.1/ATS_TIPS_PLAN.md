@@ -1,4 +1,6 @@
-# Proposed formatting tips - not implemented
+# Original proposal for formatting tips
+
+Beta 3.0.1 implements recommendations for detected Parse Check findings. The broader ideas below remain a proposal.
 
 ## Recommended first version: a small rules layer
 
