@@ -6,6 +6,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/parse': 'http://127.0.0.1:8000',
+      '/review': 'http://127.0.0.1:8000',
+      '/ai': 'http://127.0.0.1:8000',
+      '/capabilities': 'http://127.0.0.1:8000',
       '/health': 'http://127.0.0.1:8000',
     },
   },
