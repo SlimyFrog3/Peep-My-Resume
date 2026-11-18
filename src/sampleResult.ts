@@ -1,6 +1,15 @@
 // Only used when VITE_USE_MOCK=true; live uploads never use sample results.
 import type { ParseResult } from './types/ParseResult'
 export const sampleResult: ParseResult = {
+  readability: { score: 100, status: 'looks_good', rubricVersion: '1.0',
+    categories: [], note: 'Sample score only. Upload a file for real checks.' },
+  reviewBlocks: [
+    { id: 'b1', section: 'contact', text: 'Jordan Lee\njordan.lee@example.com\nPhoenix, AZ' },
+    { id: 'b2', section: 'experience', text: 'Software Developer Intern | Example Co. | 2025–2026\nBuilt an internal dashboard and maintained web services.' },
+    { id: 'b3', section: 'education', text: 'B.S. Computer Science · Example University · 2027' },
+    { id: 'b4', section: 'skills', text: 'TypeScript · React · Python · SQL' },
+  ],
+  excludedFurniture: [],
   parseCheck: { status: 'looks_good', reasons: [] },
   workExperience: [{ organization: 'Example Co.', title: 'Software Developer Intern', location: null,
     parentOrganization: null, dates: { raw: '2025–2026', start: { value: '2025', precision: 'year' }, end: { value: '2026', precision: 'year' } },

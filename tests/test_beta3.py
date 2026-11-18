@@ -60,5 +60,32 @@ class BetaTests(unittest.TestCase):
         self.assertEqual(red['parseCheck']['status'],'could_not_assess')
         self.assertIn('No recognizable sections here.',red['extractedText'])
 
+    def test_employer_overview_is_explained_without_claiming_lost_text(self):
+        result = group_sections(
+            'Sam Example\nsam@example.com\nWORK EXPERIENCE\nFICTIONAL LABS 2015 - 2021\n'
+            'Company-wide work\nQA MANAGER\nSample Client, Dallas June 2017 - July 2021'
+        )
+        self.assertEqual(result['unassignedExperience'], [])
+        self.assertTrue(result['workExperience'][0]['isEmployerOverview'])
+        self.assertEqual(result['workExperience'][1]['title'], 'QA MANAGER')
+        self.assertEqual(result['parseCheck']['status'], 'needs_review')
+        finding, = result['parseCheck']['findings']
+        self.assertIn('FICTIONAL LABS as an employer overview', finding['message'])
+        self.assertIn('leave it as is', finding['nextStep'])
+
+    def test_distinct_review_findings_point_to_the_relevant_evidence(self):
+        result = group_sections(
+            'Sam Example\nsam@example.com\nEXPERIENCE\nWorked as a contractor\n'
+            'EDUCATION\nSample State University\nLANGUAGES\nCustom list'
+        )
+        findings = {finding['section']: finding for finding in result['parseCheck']['findings']}
+        self.assertEqual(set(findings), {'experience', 'education', 'other'})
+        self.assertIn('Unassigned experience text', findings['experience']['nextStep'])
+        self.assertIn('View source', findings['education']['nextStep'])
+        self.assertIn('clearer heading', findings['other']['nextStep'])
+        self.assertEqual(result['educationRecords'][0]['institution'], 'Sample State University')
+        self.assertIsNone(result['educationRecords'][0]['qualification'])
+        self.assertEqual(result['other'], ['Custom list'])
+
     def test_health_reports_beta(self):
-        self.assertEqual(TestClient(app).get('/health').json()['version'],'3.0.0-beta')
+        self.assertEqual(TestClient(app).get('/health').json()['version'],'4.0.0-beta')

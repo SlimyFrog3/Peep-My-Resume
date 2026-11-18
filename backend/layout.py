@@ -27,7 +27,7 @@ class PageReading:
 def _lines(page, region):
     return [Line(r['text'], page.page_number, region, i,
                  (r['x0'], r['top'], r['x1'], r['bottom']))
-            for i, r in enumerate(page.extract_text_lines(return_chars=False), 1) if r['text'].strip()]
+            for i, r in enumerate(page.extract_text_lines(return_chars=False, x_tolerance=1.5, x_tolerance_ratio=0.12), 1) if r['text'].strip()]
 
 
 def _rows(words):
@@ -89,7 +89,7 @@ def _gutter(words, bounds):
 
 def read_pdf_page(page):
     left, top, right, bottom = page.bbox
-    x, body_top, uncertain = _gutter(page.extract_words(), page.bbox)
+    x, body_top, uncertain = _gutter(page.extract_words(x_tolerance=1.5, x_tolerance_ratio=0.12), page.bbox)
     if x is None:
         note = f'Page {page.page_number}: possible overlapping columns; check reading order.' if uncertain else None
         return PageReading(_lines(page, 'main'), [], note)

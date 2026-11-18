@@ -58,3 +58,52 @@ header { min-height: 90px; display: flex; align-items: center; justify-content: 
 .record p { margin: 0 0 6px; }
 .record-source { border: 0; padding-top: 0; margin-top: 10px; }
 .parser-notes summary { margin-block: 4px; }
+
+.parse-findings li + li { margin-top: 14px; }
+.parse-check .parse-findings p { margin: 3px 0; }
+.parse-findings a { color: inherit; font-size: 13px; font-weight: 700; }
+
+/* V4 score and editable resume workflow */
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+button:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--purple); outline-offset: 3px; }
+.primary { border: 0; border-radius: 10px; background: var(--purple); color: white; padding: 12px 18px; font-weight: 750; margin-block: 12px; }
+.score-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.score-heading h3 { margin: 4px 0; font-size: 19px; }
+.score-number { font-size: 46px; font-weight: 800; white-space: nowrap; }
+.score-number span { font-size: 17px; margin-left: 4px; font-weight: 500; }
+.parse-check meter { width: 100%; height: 15px; margin-top: 10px; accent-color: var(--status-color); }
+.review-launch { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: #faf7ff; margin-bottom: 20px; }
+.review-launch h3 { margin-top: 0; }
+.review-launch p { margin-bottom: 4px; }
+.review-dialog { width: min(1000px, calc(100vw - 36px)); max-height: 92dvh; box-sizing: border-box; border: 1px solid var(--line); border-radius: 16px; padding: 28px; color: var(--deep); }
+.review-dialog::backdrop { background: #20132a99; }
+.review-top { display: flex; align-items: start; justify-content: space-between; gap: 15px; }
+.review-top h2 { margin: 8px 0 16px; }
+.review-tabs { display: flex; gap: 10px; padding-bottom: 18px; }
+.review-tabs [aria-pressed=true] { background: #eee5f7; border-color: var(--purple); }
+.review-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.review-dialog p { font-size: 14px; line-height: 1.65; color: var(--muted); }
+.edit-block { border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin: 16px 0; }
+.block-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.block-toolbar label { margin-right: auto; display: grid; gap: 5px; font-size: 13px; font-weight: 700; }
+.review-dialog select, .review-dialog textarea { font: inherit; border: 1px solid #bfaacb; border-radius: 8px; background: #fff; color: var(--deep); padding: 9px; }
+.text-label { display: grid; gap: 5px; margin-block: 12px; font-size: 13px; font-weight: 700; }
+.review-dialog textarea { width: 100%; box-sizing: border-box; resize: vertical; font-size: 14px; font-weight: 400; line-height: 1.6; }
+.check-label { display: flex; align-items: start; gap: 9px; margin: 16px 0; font-size: 14px; line-height: 1.6; }
+.check-label input { margin-top: 5px; accent-color: var(--purple); flex-shrink: 0; }
+.ai-panel, .content-check { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fcfaff; margin: 12px 0; }
+.suggestion { padding-block: 14px; border-top: 1px solid var(--line); }
+.suggestion blockquote { margin: 10px 0; padding: 10px; background: white; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.suggestion button { margin-right: 6px; }
+.score-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.resume-paper { padding: 36px; margin: 20px 0; border: 1px solid #ddd; background: white; color: #111; font-family: Calibri, Arial, sans-serif; }
+.resume-paper h3 { font-size: 17px; color: #111; margin: 22px 0 8px; }
+.preview-block { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; font-size: 14px; margin-bottom: 12px; }
+.review-dialog .error { color: #9a2437; padding: 10px; background: #fff0f2; }
+@media (max-width: 600px) {
+  .review-dialog { padding: 18px; }
+  .review-top { flex-direction: column; }
+  .score-comparison { grid-template-columns: 1fr; }
+  .resume-paper { padding: 18px; }
+}

@@ -5,8 +5,8 @@ from .layout import adjacent, reflow
 MONTHS = 'jan feb mar apr may jun jul aug sep oct nov dec'.split()
 MONTH = r'(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?'
 DATE = rf'(?:(?:{MONTH})\s+|\d{{1,2}}/)?(?:19|20)\d{{2}}(?:-(?:0[1-9]|1[0-2]))?'
-PERIOD = re.compile(rf'(?<!\w)(?P<start>{DATE})\s*(?:[-–—]|\bto\b)\s*(?P<end>{DATE}|present|current|now)\b', re.I)
-ROLE = re.compile(r'\b(?:engineer|developer|manager|director|lead|analyst|specialist|designer|instructor|consultant|coordinator|assistant|intern|architect|associate|administrator|scientist|technician|teacher|officer|founder|president|quality assurance|recruiter|accountant|nurse|operator|supervisor|representative)\b', re.I)
+PERIOD = re.compile(rf'(?<!\w)(?P<start>{DATE})\s*(?:[-–—]|\bto\b)\s*(?P<end>{DATE}|present|current|now|on\s*going|ongoing)\b', re.I)
+ROLE = re.compile(r'\b(?:engineer|developer|manager|director|lead|analyst|specialist|designer|instructor|consultant|coordinator|assistant|intern|architect|associate|administrator|scientist|technician|teacher|officer|founder|president|quality assurance|recruiter|accountant|nurse|operator|supervisor|representative|mentor|vp|vice president)\b', re.I)
 ACTION = re.compile(r'^(?:managed|led|built|developed|worked|provided|performed|trained|used|designed|tested|implemented|created|coordinated|oversaw|supported|signed|participated|maintained|assisted|as the|responsible)\b', re.I)
 DEGREE = re.compile(r'\b(?:bachelor|master|doctorate|associate|diploma|b\.?s|b\.?a|m\.?s|m\.?a|mba|ph\.?d)\b', re.I)
 SCHOOL = re.compile(r'\b(?:university|college|institute|school|polytechnic|academy)\b', re.I)
@@ -14,7 +14,7 @@ BULLET = re.compile(r'^\s*[•●▪◦‣*–-]\s+')
 
 
 def date_value(s):
-    if s.lower() in {'present','current','now'}:
+    if s.lower() in {'present','current','now','on going','ongoing'}:
         return {'value':'present','precision':'present'}
     m = re.search(r'(?:19|20)\d{2}',s)
     if not m:
@@ -77,6 +77,23 @@ def job_start(lines,i,explicit=False):
             return record(count,org,b,dates,loc)
         if explicit and org.isupper() and not _role(org):
             return record(1,org,None,_range(ma))
+    if ma and ma.start() == 0 and _role(b) and _name(c):
+        return record(3,c,b,_range(ma))
+    # A title and wrapped employer/location block may place the dates several lines below it.
+    if _role(a):
+        for offset, source in enumerate(lines[i+2:i+6], 2):
+            if source.page != lines[i].page or source.region != lines[i].region:
+                break
+            match = _period(source.text.strip())
+            middle = lines[i+1:i+offset]
+            if match and match.start() == 0 and all(not BULLET.match(l.text) for l in middle):
+                org_text = b.strip()
+                if 3 <= len(org_text) <= 180 and not ACTION.search(org_text):
+                    location_only = org_text.lower().startswith(('remote position', 'remote from'))
+                    return record(offset+1, None if location_only else org_text, a, _range(match),
+                                  org_text if location_only else None)
+            if BULLET.match(source.text) or _role(source.text):
+                break
     if _role(a):
         if mb and _name(org:=prefix(b,mb)):
             org, _, loc = org.partition(',')
@@ -112,7 +129,9 @@ def experience_records(lines):
         else:
             leftover.append(lines[i].text)
         i+=1
+    parents = {item['parentOrganization'] for item in result if item['parentOrganization']}
     for item in result:
+        item['isEmployerOverview'] = not item['title'] and item['organization'] in parents
         body = item.pop('body')
         item['description']=reflow(body)
         item['source']=[l.evidence() for l in item['source']+body]
@@ -129,7 +148,14 @@ def education_records(lines):
             result.append(current)
         prev = current['source'][-1] if current['source'] else None
         current['source'].append(line)
-        if is_degree and not current['qualification']:
+        if is_degree and not current['qualification'] and re.search(r'\s+from\s+', text, re.I):
+            qualification, institution = re.split(r'\s+from\s+', text, maxsplit=1, flags=re.I)
+            period = PERIOD.search(institution)
+            current['qualification'] = qualification
+            current['institution'] = institution[:period.start()].strip(' ,\t') if period else institution
+            if period:
+                current['date'] = date_value(period['end'])
+        elif is_degree and not current['qualification']:
             chunks = re.split(r'\s+[|·]\s+',text)
             current['qualification'] = chunks[0]
             for chunk in chunks[1:]:
@@ -170,7 +196,7 @@ def certification_records(lines):
             wrap=(adjacent(prev,line,max_dx=5,max_dy=15)
                   and prev.text.strip().casefold() not in {'certificate','certification'}
                   and (prev.text.endswith('-') or line.text.startswith('(')
-                       or line.text[0].islower() or prev.box[2]-prev.box[0]>=85))
+                       or line.text[0].islower() or (not re.search(DATE, prev.text, re.I) and prev.box[2]-prev.box[0]>=85)))
             if marker or indented or wrap:
                 records[-1].append(line)
                 continue
