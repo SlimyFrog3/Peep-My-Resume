@@ -45,8 +45,30 @@ def score_result(result):
     ]
     total = sum(c['earned'] for c in categories)
     assessable = result['parseCheck']['status'] != 'could_not_assess'
+    reasons = result['parseCheck']['reasons']
+    observations = {
+        'text': (bool(words) and assessable, 'The text passed our spacing and character-readability checks.' if extraction == 30 and assessable else None),
+        'sections': (bool(content) and assessable, 'No unclassified text or long Contact prose was flagged.' if classification == 25 and unknown == 0 and leaked == 0 and assessable else None),
+        'records': (bool(fields) or bool(result['experience']), 'All expected fields in the detected job and education records were identified.' if fields and organization == 25 else None),
+        'contact': (True, 'An email or phone number was detected.' if contact_ok else None),
+    }
+    for category in categories:
+        observed, strength = observations[category['key']]
+        category.update(assessed=observed, strength=strength,
+                        status='not_assessed' if not observed else
+                        'strong' if category['earned'] / category['possible'] >= .9 else
+                        'review' if category['earned'] / category['possible'] >= .55 else 'attention')
+    checklist = [{'label': 'Score is at least 90/100', 'met': assessable and total >= 90,
+                  'action': 'Use the category breakdown to identify checks that lost points.'}]
+    checklist.extend({'label': reason, 'met': False,
+                      'action': next((f['nextStep'] for f in result['parseCheck'].get('findings', [])
+                                      if f['message'] == reason), 'Compare this finding with the original and correct it in the review window.')}
+                     for reason in reasons)
+    if not reasons:
+        checklist.append({'label': 'No unresolved parsing findings', 'met': True,
+                          'action': 'Compare the detected information with your original before exporting.'})
     return {'score': total if assessable else None, 'rubricVersion': RUBRIC_VERSION,
-            'status': ('could_not_assess' if not assessable else
-                       'looks_good' if total >= 90 and not result['parseCheck']['reasons'] else 'needs_review'),
-            'categories': categories,
+            'status': ('could_not_assess' if not assessable else 'needs_attention' if total < 55 else
+                       'looks_good' if total >= 90 and not reasons else 'needs_review'),
+            'categories': categories, 'greenChecklist': checklist,
             'note': '100 means all implemented readability checks passed. It does not prove complete extraction, factual accuracy, or ATS acceptance.'}

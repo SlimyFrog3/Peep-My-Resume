@@ -1,8 +1,8 @@
 import { isParseResult } from './parserApi'
-import type { AISuggestion, ExportPreview, ReviewBlock } from '../types/ParseResult'
+import type { ExportPreview, ReviewBlock, SectionKey, TemplateId, ResumeTemplate } from '../types/ParseResult'
 
 const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
-const clean = (blocks: ReviewBlock[]) => blocks.map(({ id, section, text }) => ({ id, section, text }))
+const clean = (blocks: ReviewBlock[]) => blocks.map(({ id, section, text, resolution }) => ({ id, section, text, resolution: resolution ?? 'include' }))
 
 async function request(path: string, body?: unknown): Promise<Response> {
   const controller = new AbortController()
@@ -28,20 +28,22 @@ async function request(path: string, body?: unknown): Promise<Response> {
   } finally { window.clearTimeout(timer) }
 }
 
-export async function capabilities(): Promise<{ aiEnabled: boolean }> {
-  return (await request('/capabilities')).json()
+export async function getTemplates(): Promise<ResumeTemplate[]> {
+  const data = await (await request('/templates')).json()
+  if (!Array.isArray(data.templates) || data.templates.length !== 3) throw new Error('The style list could not be loaded.')
+  return data.templates
 }
-export async function previewResume(original: ReviewBlock[], blocks: ReviewBlock[]): Promise<ExportPreview> {
-  const data = await (await request('/review/preview', { original: clean(original), blocks: clean(blocks) })).json()
+export async function previewResume(original: ReviewBlock[], blocks: ReviewBlock[], templateId: TemplateId, sectionOrder: SectionKey[]): Promise<ExportPreview> {
+  const data = await (await request('/review/preview', { original: clean(original), blocks: clean(blocks), templateId, sectionOrder })).json()
   if (!isParseResult(data.result) || typeof data.coverage?.retainedPercent !== 'number'
-    || typeof data.exportPreservesApprovedWords !== 'boolean') throw new Error('Unexpected preview response. Check the deployed frontend and backend versions.')
+    || typeof data.exportPreservesApprovedWords !== 'boolean' || !Array.isArray(data.unresolvedBlocks)
+    || !Array.isArray(data.document?.sections) || typeof data.docxBase64 !== 'string') throw new Error('Unexpected preview response. Check the deployed frontend and backend versions.')
   return data
 }
-export async function exportResume(original: ReviewBlock[], blocks: ReviewBlock[]): Promise<Blob> {
-  return (await request('/review/export', { original: clean(original), blocks: clean(blocks) })).blob()
-}
-export async function aiSuggestions(blocks: ReviewBlock[]): Promise<AISuggestion[]> {
-  const data = await (await request('/ai/review', { consent: true, blocks: clean(blocks) })).json()
-  if (!Array.isArray(data.suggestions)) throw new Error('AI returned an unreadable response.')
-  return data.suggestions
+export function downloadPreview(preview: ExportPreview) {
+  const bytes = Uint8Array.from(atob(preview.docxBase64), c => c.charCodeAt(0))
+  const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = `Peep-My-Resume-${preview.template.id}.docx`; a.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

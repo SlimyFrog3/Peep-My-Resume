@@ -326,6 +326,7 @@ def _classify(main, sidebar, embedded=(), notes=(), issues=()):
             last_label = label
         for chunk in chunks:
             blocks.append({'id': f'b{len(blocks)+1}', 'section': key,
+                           'resolution': 'pending' if key == 'other' else 'include',
                            'text': '\n'.join(line.text for line in chunk),
                            'source': [line.evidence() for line in chunk]})
     if links:

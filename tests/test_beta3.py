@@ -88,4 +88,4 @@ class BetaTests(unittest.TestCase):
         self.assertEqual(result['other'], ['Custom list'])
 
     def test_health_reports_beta(self):
-        self.assertEqual(TestClient(app).get('/health').json()['version'],'4.0.0-beta')
+        self.assertEqual(TestClient(app).get('/health').json()['version'],'4.0.1-beta')

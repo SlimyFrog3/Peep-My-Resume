@@ -45,14 +45,22 @@ export type EducationRecord = { institution: string | null; qualification: strin
 export type CertificationRecord = { name: string; status: string | null; description: string[]; source: SourceLine[] }
 export type LinkRecord = { url: string; method: string; source: SourceLine[] }
 
-export type ReviewBlock = { id: string; section: SectionKey; text: string; source?: SourceLine[] }
+export type ReviewBlock = { id: string; section: SectionKey; text: string; source?: SourceLine[]; resolution?: 'pending' | 'include' | 'exclude' }
 export type Readability = {
-  score: number | null; status: ParseCheckStatus; rubricVersion: string; note: string
-  categories: { key: string; label: string; earned: number; possible: number; detail: string }[]
+  score: number | null; status: ParseCheckStatus | 'needs_attention'; rubricVersion: string; note: string
+  greenChecklist?: { label: string; met: boolean; action: string }[]
+  categories: { assessed?: boolean; strength?: string | null; status?: 'strong' | 'review' | 'attention' | 'not_assessed'; key: string; label: string; earned: number; possible: number; detail: string }[]
 }
 export type ExportPreview = {
   result: ParseResult
   coverage: { retainedPercent: number; removedTokenCount: number; addedTokenCount: number; removedExamples: string[]; addedExamples: string[]; note: string }
   exportPreservesApprovedWords: boolean
+  unresolvedBlocks: string[]
+  document: ResumeDocument
+  template: ResumeTemplate
+  docxBase64: string
 }
-export type AISuggestion = { id: string; section: SectionKey; reason: string }
+export type TemplateId = 'classic' | 'modern' | 'compact'
+export type ResumeTemplate = { id: TemplateId; name: string; caption: string; font: string; bodyPt: number; namePt: number; headingPt: number; accent: string; margin: number; paragraphAfter: number; headingBefore: number; lineSpacing: number }
+export type ResumeParagraph = { kind: 'name' | 'contact' | 'heading' | 'entry' | 'date' | 'body' | 'bullet' | 'space'; text: string }
+export type ResumeDocument = { sections: { key: SectionKey; title: string; blocks: { id: string; paragraphs: ResumeParagraph[] }[] }[] }

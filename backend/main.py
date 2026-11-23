@@ -7,14 +7,14 @@ from starlette.concurrency import run_in_threadpool
 from .parser import parse_resume, ParseError, MAX_BYTES
 
 from .workflow import ReviewRequest, preview_export, export_docx
-from .ai_review import AIRequest, suggest, enabled
+from .templates import TEMPLATES
 
-VERSION = '4.0.0-beta'
+VERSION = '4.0.1-beta'
 app = FastAPI(title='Peep-My-Resume API', version=VERSION)
 
 @app.middleware('http')
 async def limit_review_body(request: Request, call_next):
-    if request.url.path in {'/review/preview', '/review/export', '/ai/review'}:
+    if request.url.path in {'/review/preview', '/review/export'}:
         chunks, size = [], 0
         async for chunk in request.stream():
             size += len(chunk)
@@ -52,7 +52,12 @@ async def parse(file: UploadFile = File(...)):
 
 @app.get('/capabilities')
 def capabilities():
-    return {'aiEnabled': enabled(), 'docxExport': True, 'rubricVersion': '1.0'}
+    return {'docxExport': True, 'templates': list(TEMPLATES), 'rubricVersion': '1.0'}
+
+
+@app.get('/templates')
+def templates():
+    return {'templates': list(TEMPLATES.values())}
 
 
 @app.post('/review/preview')
@@ -62,14 +67,11 @@ def preview(request: ReviewRequest):
 
 @app.post('/review/export')
 def export(request: ReviewRequest):
-    return Response(export_docx(request.blocks),
+    if any(b.resolution == 'pending' and b.text.strip() for b in request.blocks):
+        raise HTTPException(422, 'Place, keep or exclude all pending blocks before exporting.')
+    return Response(export_docx(request.blocks, request.templateId, request.sectionOrder),
                     media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                     headers={'Content-Disposition': 'attachment; filename="Peep-My-Resume.docx"'})
-
-
-@app.post('/ai/review')
-async def ai_review(request: AIRequest, http_request: Request):
-    return await suggest(request, http_request.client.host if http_request.client else 'unknown')
 
 
 # Vite proxies /parse locally. In production FastAPI serves the built frontend.

@@ -12,7 +12,7 @@ export function isParseResult(value: unknown): value is ParseResult {
   const check = data.parseCheck as Record<string, unknown> | undefined
   const score = data.readability as Record<string, unknown> | undefined
   return !!score && (score.score === null || (typeof score.score === 'number' && score.score >= 0 && score.score <= 100))
-    && ['looks_good', 'needs_review', 'could_not_assess'].includes(String(score.status))
+    && ['looks_good', 'needs_review', 'needs_attention', 'could_not_assess'].includes(String(score.status))
     && Array.isArray(score.categories) && typeof score.note === 'string'
     && Array.isArray(data.reviewBlocks) && data.reviewBlocks.every(block =>
       block && typeof block.id === 'string' && typeof block.text === 'string'

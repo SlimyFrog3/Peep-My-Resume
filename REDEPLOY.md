@@ -1,13 +1,17 @@
-# Redeploy Beta 4 on your existing Render service
+# Deploy Beta 4.0.1 on the existing Render service
 
-1. Back up your current project or keep its Git commit.
-2. Extract this ZIP. Upload the **contents inside the extracted folder** to your existing GitHub repository root, replacing matching files. You should see backend, src, Dockerfile, render.yaml and package.json together. Do not upload the ZIP or an extra wrapper directory.
-3. Commit frontend and backend changes together to the branch your existing Render service deploys.
-4. Wait for Render to deploy, or use **Manual Deploy > Deploy latest commit**. No new service or Blueprint is required.
-5. Confirm the service is Live and its commit matches yours. Open https://peep-my-resume.onrender.com/health and confirm {"status":"ok","version":"4.0.0-beta"}.
-6. Refresh the website, upload examples/beta-sidebar.pdf, check the score, then open Review & create DOCX. Build the preview, approve, download, and open the document in Word or LibreOffice.
-7. Test an edit/removal and confirm a fresh preview and change approval are required. Check a phone as well as a desktop.
-8. AI is optional. To enable it, set AI_ENABLED=true, OPENAI_API_KEY to your private API key, and OPENAI_MODEL=gpt-4.1-mini (or another available model supporting Responses structured outputs) in the Render backend environment, then restart/redeploy. Never put the key in GitHub or VITE_ variables. /capabilities should report aiEnabled:true.
-9. Opt into AI review with a resume you are permitted to send to the provider. Accept/reject suggestions, and verify that wording remains intact. If AI fails, manual review/export should remain available.
+1. Keep the current Git commit as a rollback point.
+2. Extract the ZIP. Upload the **contents inside it** to the root of the existing GitHub repository. Keep backend, src, public, Dockerfile, package.json and render.yaml together. Do not upload an extra wrapper folder.
+3. In GitHub delete the obsolete **backend/ai_review.py** if present. It is absent from this ZIP. The new backend does not import it, but GitHub uploads do not remove old files.
+4. Commit frontend and backend changes together to the branch Render deploys.
+5. In Render remove the obsolete AI_ENABLED, OPENAI_MODEL and OPENAI_API_KEY variables if previously set. This version does not use them.
+6. Wait for the commit deployment, or choose Manual Deploy > Deploy latest commit. Confirm Live and the matching commit.
+7. Open https://peep-my-resume.onrender.com/health and confirm {"status":"ok","version":"4.0.1-beta"}.
+8. Refresh the site. Check the rubric, checklist and observed strengths. A high score with a remaining finding should be yellow with a clear explanation; a score below 55 should be red.
+9. Open Review & create DOCX. Check all three style cards and Modern's muted green.
+10. Move Skills above Experience, reorder two entries within Experience, build the preview and download. Confirm Word shows the same order.
+11. If unplaced text exists, choose its section, keep it as Additional Information or explicitly exclude it. Download should remain blocked while a nonempty block is pending.
+12. Change style or content after previewing; approval/download must reset. Rebuild and approve again.
+13. Test short and long resumes on desktop and phone. Check hover/focus arrow explanations on desktop and visible labels on mobile.
 
-Do not upload node_modules, dist, .venv, .env, private API keys or real resumes. The included Dockerfile installs dependencies and builds the frontend. PDF export is deferred; DOCX is the supported output.
+Do not upload node_modules, dist, .venv, private environment files, API keys or real resumes. The existing Dockerfile builds the frontend and installs backend requirements. No new Render service, database or paid API is needed.

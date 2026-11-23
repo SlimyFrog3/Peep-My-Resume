@@ -10,7 +10,6 @@ from reportlab.pdfgen.canvas import Canvas
 from backend.main import app
 from backend.parser import group_sections, parse_resume
 from backend.workflow import Block, ReviewRequest, export_docx, preview_export, coverage
-from backend.ai_review import prepare_blocks, validate_suggestions
 
 class V4Tests(unittest.TestCase):
     def setUp(self):
@@ -147,38 +146,3 @@ class V4Tests(unittest.TestCase):
         response=self.client.post('/review/preview',json={'original':self.blocks,'blocks':bad})
         self.assertEqual(response.status_code,422)
 
-    def test_ai_opt_in_disabled_and_source_validation(self):
-        with patch.dict('os.environ',{'AI_ENABLED':'false'}):
-            self.assertFalse(self.client.get('/capabilities').json()['aiEnabled'])
-            self.assertEqual(self.client.post('/ai/review',json={'consent':False,'blocks':self.blocks}).status_code,400)
-            self.assertEqual(self.client.post('/ai/review',json={'consent':True,'blocks':self.blocks}).status_code,503)
-        blocks=[Block(**b) for b in self.blocks]
-        sent=prepare_blocks(blocks)
-        self.assertNotIn('contact',[b['id'] for b in sent])
-        moves=validate_suggestions({'suggestions':[
-            {'id':'job','section':'projects','reason':'A potential project'},
-            {'id':'missing','section':'education','reason':'Invented ID'},
-            {'id':'contact','section':'other','reason':'Do not send contact'},
-            {'id':'job','section':'skills','reason':'Duplicate'},
-        ]},blocks)
-        self.assertEqual(len(moves),1)
-        self.assertEqual(moves[0]['id'],'job')
-        self.assertNotIn('text',moves[0])
-
-    def test_ai_mocked_provider_roundtrip(self):
-        import httpx
-        class MockClient:
-            async def __aenter__(self): return self
-            async def __aexit__(self,*args): pass
-            async def post(self,url,json,headers):
-                self.body=json
-                assert json['store'] is False
-                assert 'jordan@example.com' not in json['input']
-                payload={'suggestions':[{'id':'job','section':'projects','reason':'Example section move.'}]}
-                return httpx.Response(200,json={'status':'completed','output':[
-                    {'content':[{'type':'output_text','text':__import__('json').dumps(payload)}]}]},
-                    request=httpx.Request('POST',url))
-        with patch.dict('os.environ',{'AI_ENABLED':'true','OPENAI_API_KEY':'test-key','OPENAI_MODEL':'test-model'}), patch('backend.ai_review.httpx.AsyncClient',return_value=MockClient()):
-            response=self.client.post('/ai/review',json={'consent':True,'blocks':self.blocks})
-            self.assertEqual(response.status_code,200,response.text)
-            self.assertEqual(response.json()['suggestions'][0]['section'],'projects')
