@@ -6,6 +6,7 @@ from pdfminer.pdfdocument import PDFPasswordIncorrect
 from pdfminer.pdfparser import PDFSyntaxError
 from backend.main import app
 from backend.parser import read_pdf_page, parse_resume
+from backend.layout import PageReading
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -23,17 +24,10 @@ class ErrorTests(unittest.TestCase):
         page.bbox = (12, -7.92, 624, 784.08)
         page.width, page.height = 612, 792
         page.extract_words.return_value = []
-        page.extract_text.return_value = 'Readable document'
-        def crop(box):
-            x0, top, x1, bottom = box
-            self.assertGreaterEqual(x0, 12)
-            self.assertGreaterEqual(top, -7.92)
-            self.assertLessEqual(x1, 624)
-            self.assertLessEqual(bottom, 784.08)
-            cropped = Mock(); cropped.extract_text.return_value = ''
-            return cropped
-        page.crop.side_effect = crop
-        self.assertEqual(read_pdf_page(page), ('Readable document', None))
+        page.extract_text_lines.return_value = [{'text': 'Readable document', 'x0': 24, 'top': 40, 'x1': 130, 'bottom': 50}]
+        reading = read_pdf_page(page)
+        self.assertEqual([line.text for line in reading.main], ['Readable document'])
+        self.assertFalse(reading.sidebar)
 
     def test_layout_failure_uses_standard_text_and_warning(self):
         with patch('backend.parser.read_pdf_page', side_effect=ValueError('crop bounds')):
@@ -63,7 +57,7 @@ class ErrorTests(unittest.TestCase):
             self.assertNotIn(word, message)
 
     def test_no_text_is_not_assumed_to_be_scan(self):
-        with patch('backend.parser.read_pdf_page', return_value=('', None)):
+        with patch('backend.parser.read_pdf_page', return_value=PageReading([], [])):
             response = self.upload()
         self.assertEqual(response.status_code, 422)
         self.assertIn('No readable text was extracted', response.json()['detail'])

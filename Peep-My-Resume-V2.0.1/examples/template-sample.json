@@ -1,0 +1,44 @@
+[
+  {
+    "id": "identity",
+    "section": "contact",
+    "text": "Taylor Morgan\nQuality Assurance Engineer\nPhoenix, AZ | taylor.morgan@example.com | 602-555-0142",
+    "resolution": "include"
+  },
+  {
+    "id": "profile",
+    "section": "summary",
+    "text": "Quality engineer with experience in release testing, automation and cross-team delivery. Builds practical tools and clear test documentation.",
+    "resolution": "include"
+  },
+  {
+    "id": "job1",
+    "section": "experience",
+    "text": "QA Engineer | Northstar Example Labs | 2023 - Present\n- Built automated checks for web releases and documented regression coverage.\n- Coordinated release testing with engineering and product teams.\n- Reduced repetitive manual checks by 25% through reusable test scripts.",
+    "resolution": "include"
+  },
+  {
+    "id": "job2",
+    "section": "experience",
+    "text": "QA Analyst | Sample Software Studio | 2021 - 2023\n- Tested customer workflows, investigated defects and maintained release notes.\n- Trained new team members on test planning and reporting.",
+    "resolution": "include"
+  },
+  {
+    "id": "edu",
+    "section": "education",
+    "text": "Bachelor of Science | Sample State University | 2021",
+    "resolution": "include"
+  },
+  {
+    "id": "skills",
+    "section": "skills",
+    "text": "Python, SQL, Selenium, Git, Jira\nTest planning, API testing, regression testing, release readiness",
+    "resolution": "include"
+  },
+  {
+    "id": "project",
+    "section": "projects",
+    "text": "Release Health Dashboard\nBuilt a dashboard to summarize test coverage and unresolved defects for release reviews.",
+    "resolution": "include"
+  }
+]

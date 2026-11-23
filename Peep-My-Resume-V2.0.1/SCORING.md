@@ -24,6 +24,15 @@ A document with text but too little recognizable resume information shows **Coul
 
 **100/100** means all these checks passed; it does not prove all information was extracted. It is possible to receive 100 and still have an amber review finding, such as an employer overview that warrants checking.
 
-Green **Looks good** requires a score at least 90 and no review findings. Other assessable results are yellow **Needs review**. Unassessable results/errors are red. The original and actual generated DOCX are scored with the same rubric version.
+Green **Looks good** requires a score at least 90 and no review findings. Other assessable results of 55 or above are yellow **Needs review**. Scores below 55 are red **Needs attention**. Unassessable results/errors are red. The original and actual generated DOCX are scored with the same rubric version.
 
 Scores may stay the same or decrease after reformatting. The comparison reports word additions and omissions independently, and requires review of changes before download.
+
+
+## Feedback added in 4.0.1
+
+The numeric formula is unchanged. A checklist explains the 90-point threshold and each unresolved finding, using its existing next-step guidance.
+
+Categories now report assessed, strength and status. “What’s working well” displays only observed positives. Record associations can receive no-deduction points when absent, but are explicitly labeled not assessed and receive no praise. Detecting an email/phone earns a contact observation; absent links never produce a claim that profile URLs were verified.
+
+A 98 or 100 with a remaining finding stays yellow. User approval is not substituted for a fresh parser result, and deleting content does not automatically prove improvement.

@@ -1,12 +1,22 @@
-# Peep My Resume Beta 4
+# Peep My Resume Beta 4.0.1
 
-Peep-My-Resume lets someone upload a PDF or DOCX, inspect the extracted information, review and correct the content, then download a simple editable DOCX. It measures the original and exported file using the same readability checks.
+Upload a PDF or DOCX to see how our parser reads it, review the readability score, arrange your content, and export an editable resume in one of three styles.
 
-This version is **4.0.0-beta**. Start with [REDEPLOY.md](REDEPLOY.md) to update your Render service, [PATCH_NOTES_V4.md](PATCH_NOTES_V4.md) for changes, and [SCORING.md](SCORING.md) for the rubric.
+Start with [REDEPLOY.md](REDEPLOY.md), [PATCH_NOTES_4.0.1.md](PATCH_NOTES_4.0.1.md), and [SCORING.md](SCORING.md).
+
+## What changed
+
+- Green requires at least 90/100 and no unresolved parser findings. Yellow covers other assessable scores from 55 upward. Scores below 55 are red. A checklist below the bar explains what remains before green.
+- “What’s working well” highlights observed strengths. Absent record types are labeled not assessed rather than praised.
+- “Choose your style!” offers Classic Professional, Modern Accent and Compact Professional, with real rendered example thumbnails.
+- Sections and entries can be reordered. The editor, document preview and exported file use the same order.
+- Thick arrow controls have visible labels plus hover/focus tooltips.
+- Unclassified text requires an explicit placement decision: assign a section, keep as Additional Information, or exclude. Excluded entries remain restorable in the review.
+- OpenAI integration, its endpoint and its controls have been removed. AI work is deferred to V5.
 
 ## Run locally
 
-Requires Python 3.12 and Node 22. In VS Code open the project folder containing this README, backend, src and package.json.
+Requires Python 3.12 and a supported Node version: 22.22.2+, 24.15+ or 26+. The included Render Dockerfile uses the current Node 22 image.
 
 Windows PowerShell, first terminal:
 
@@ -19,89 +29,86 @@ py -m venv .venv
 Second terminal:
 
 ```powershell
-npm install
+npm ci
 npm run dev
 ```
 
-Open the Local URL Vite prints, normally http://localhost:5173. Both terminals stay running. On macOS/Linux use python3 to create the environment, then .venv/bin/python in place of the Windows Python path.
+Open Vite's Local URL, normally http://localhost:5173. Both terminals stay running. On macOS/Linux use python3 for environment creation and .venv/bin/python instead of the Windows Python path.
 
-## User workflow
+## Review and export
 
-1. Upload a text PDF or DOCX. Analysis starts immediately.
-2. See Parsing Readiness out of 100 near the top, expand the rubric, and inspect the findings/source text. A number is a check of our own parser's output.
-3. Open **Review & create DOCX**. The window contains editable source blocks. Each job normally has its own block.
-4. Edit text, change sections, reorder blocks within a section, remove blocks, or add missing content. To split a block, insert a blank line and use **Split at blank lines**. Verify the names, dates, job associations and numbers against your original.
-5. Optionally request AI section suggestions and accept or reject each one. This requires separate consent and server configuration.
-6. Use **Build preview & reparse DOCX**. The server creates the actual DOCX bytes in memory, parses those bytes, and reports the new score.
-7. Inspect the original versus new scores and the content-preservation check. Review any word additions/omissions. Improvement is not guaranteed.
-8. Approve the content and any changes. Download the editable DOCX. Editing afterward invalidates the preview and approval, requiring a fresh check.
+1. Upload a text-based PDF or DOCX. Analysis starts automatically.
+2. Inspect the score, observed strengths, rubric and “What it takes to get green.”
+3. Open **Review & create DOCX**.
+4. Choose a style. Template cards show fictional example content; the actual preview uses your content.
+5. Arrange whole sections with section arrows. Arrange entries within a section with entry arrows. Use the dropdown to move an entry to a different section.
+6. Edit source text and verify names, dates, achievements and associations against the original. Insert blank lines to split mixed content into separate entries.
+7. Resolve “Needs placement” blocks. You can include them under Additional Information or exclude them explicitly. Nothing is silently thrown away.
+8. Build the preview. The backend creates the actual DOCX, reparses it and checks approved word preservation. Pending text is included in the preview for inspection but blocks download until resolved.
+9. Inspect the original/new scores and word additions/omissions. A simpler layout does not guarantee a higher score.
+10. Approve the content and any additions/omissions, then download. The browser downloads the exact DOCX bytes returned with that preview.
 
-The browser preview shows the single-column content, not an exact Word page rendering. Open the downloaded file to check page breaks. PDF export and automatic rewriting are not part of this release.
+Changing content, section order, entry order or template clears the preview and approvals. The selected template controls typography and spacing; it does not rearrange sections. Long content gains pages naturally. The browser preview matches the content model and style settings, but Word/LibreOffice determine exact page breaks and font substitution.
+
+PDF export is deferred. Examples/classic-style.docx, modern-style.docx and compact-style.docx contain the same fictional resume in each style. Examples/template-sample.json is editable sample data.
 
 ## How the code connects
 
-- **src/App.tsx** handles the file, upload request, loading and errors.
-- **src/services/parserApi.ts** calls **POST /parse**. Vite proxies API calls to port 8000 locally. In production the Docker image builds Vite and FastAPI serves the frontend.
-- **backend/parser.py** extracts with pdfplumber or python-docx, recognizes headings, groups sections and assembles review blocks.
-- **backend/layout.py** reconstructs PDF spacing and reading regions from character/word positions. A narrower spacing threshold addresses PDFs with visually spaced words but no literal spaces.
-- **backend/records.py** groups jobs, education and certifications, retaining source references. Missing fields stay missing.
-- **backend/review.py** explains observed issues and next steps.
-- **backend/scoring.py** applies the versioned 30/25/25/20 rubric. AI never assigns the score.
-- **src/components/ResumeReview.tsx** is the review window. Edits stay in component state until the user sends a preview/export request. Closing the window keeps edits while that result is mounted; reloading or uploading another file clears them.
-- **backend/workflow.py** validates blocks, builds the single-column DOCX and compares word counts. It does not generate achievements or fill missing facts.
-- **backend/ai_review.py** calls OpenAI only on opt-in, returning proposed block IDs/sections/reasons. The original block text is never replaced by model output.
+| File | Purpose |
+| --- | --- |
+| src/App.tsx | Upload state, analysis and error display |
+| src/components/ReadabilityScore.tsx | Score, checklist, strengths and category feedback |
+| src/components/ResumeReview.tsx | Review state, approvals, section/entry arrangement |
+| src/components/MoveButton.tsx | Accessible arrows with tooltips |
+| src/components/TemplateChooser.tsx | Three style choices |
+| src/components/ResumeDocumentPreview.tsx | Renders the shared document model |
+| src/services/parserApi.ts and reviewApi.ts | Browser-to-backend requests |
+| backend/main.py | FastAPI endpoints and production frontend hosting |
+| backend/parser.py and layout.py | File extraction, word spacing and section grouping |
+| backend/records.py and links.py | Evidence-backed records and links |
+| backend/review.py | Findings and recommended next steps |
+| backend/scoring.py | Deterministic 30/25/25/20 rubric and observed strengths |
+| backend/templates.py | Shared style definitions for three DOCX layouts |
+| backend/workflow.py | Validated ordered blocks, shared document model, DOCX export, reparse and preservation checks |
 
-### API endpoints
+Pdfplumber reads PDFs; python-docx reads and generates DOCX files. They run inside the backend. No external parsing or AI service is called.
 
-| Method | Path | Purpose |
+The document model contains ordered sections, ordered blocks and paragraphs with formatting roles such as name, entry header, date, body and bullet. These roles do not invent missing employers or qualifications. Words remain editable; obvious wrapped prose may be joined without rewriting its content.
+
+### API
+
+| Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | /health | Version and health |
-| GET | /capabilities | Whether optional AI is configured |
+| GET | /health | Version 4.0.1-beta and health |
+| GET | /capabilities | Export capability, template IDs and rubric version |
+| GET | /templates | Three style definitions |
 | POST | /parse | Multipart PDF/DOCX upload |
-| POST | /review/preview | Reviewed blocks to real DOCX, reparse and compare |
-| POST | /review/export | Reviewed blocks to downloadable DOCX |
-| POST | /ai/review | Optional consent-based block organization suggestions |
+| POST | /review/preview | Generate actual DOCX, reparse and return document model, comparison, unresolved IDs and DOCX bytes as base64 |
+| POST | /review/export | Direct DOCX export for API clients; rejects unresolved placement |
 
-Preview/export JSON contains **original** and **blocks**, each an array of {id, section, text}. Source metadata is for the UI, not required in these requests. Inputs are limited to 100 blocks, 40,000 characters per block, 200,000 characters per version, and a 2 MiB request body. Blank resumes and duplicate IDs are rejected.
+Preview/export requests contain original and blocks arrays. Each block has id, section, text and resolution (pending, include or exclude). Requests also include templateId (classic, modern, compact) and sectionOrder (all known section IDs, each exactly once). Defaults preserve compatibility with older API clients.
 
-No resume database is used. Uploads, exports and review data are handled in memory for each request. Local browser edits are not saved across reloads. The comparison uses the client-supplied original blocks as its reference; it is feedback, not a tamper-proof certificate.
+Inputs are limited to 100 blocks, 40,000 characters per block, 200,000 characters per version and a 2 MiB review request body. Empty included resumes, duplicate IDs, unknown templates and invalid section orders are rejected.
 
-## Optional AI configuration
+## Data handling
 
-Leave AI disabled to use parsing, editing, scores and DOCX export with no AI service.
+No database or saved resume history is implemented. Exports and review processing happen in memory per request; upload handling may use temporary files. Browser edits and approved download bytes stay in memory until the page/result is replaced or reloaded. No AI provider receives resume content.
 
-To enable organization suggestions, add these **backend environment variables** in Render:
+The comparison uses the client-provided original blocks. Word-count preservation flags additions and omissions but cannot certify factual accuracy, punctuation, word order or correct associations.
 
-```text
-AI_ENABLED=true
-OPENAI_API_KEY=your-private-api-key
-OPENAI_MODEL=gpt-4.1-mini
-```
+## Validation and limitations
 
-The model must be available to your API project and support Responses API structured outputs. You can choose another compatible model. Keys go in Render environment settings, never GitHub, the ZIP or any VITE_ variable. Environment variables are read directly; local .env files are not automatically loaded. Set them in the terminal before launching Python.
-
-AI sends current non-contact block text to OpenAI after the user's explicit consent. Emails and phone numbers detected in other blocks are redacted; this is not full anonymization, and names or addresses elsewhere may remain. OpenAI retention policies apply; the request sets store=false, which does not mean zero retention. See https://developers.openai.com/api/docs/guides/your-data.
-
-The model can propose moving entire blocks. It cannot change their text. Python discards unknown IDs, duplicate IDs, invalid sections and moves involving Contact. A user can split a mixed block manually before requesting help. Suggestions are optional; if the API is unavailable, manual review/export still work.
-
-Basic limits: 35,000 input characters, 3 requests per minute per direct client address, 60 requests per hour per server process, two concurrent provider calls and a 45-second provider timeout. Limits reset on process restart and are not shared across workers. Render's proxy may cause multiple visitors to share an address bucket. These basic caps are suitable for a small beta; configure a provider-side budget and stronger shared controls before a high-volume public rollout.
-
-## Limitations and testing
-
-This is a heuristic parser, not a clone of every employer ATS. Recognizing headings does not prove every field is correct. Screenshots alone cannot establish what went wrong in the underlying document. Scans need text extraction/OCR outside this app. Complex tables or text boxes can still require manual review.
-
-Repeated PDF page furniture is suppressed only with margin/repetition evidence. The review window lets users restore excluded text. Word header/footer and text-box content is retained for review, but its placement can be uncertain. Missing information is not invented.
-
-The word-preservation check catches many additions/omissions but does not prove that facts, dates or associations remain correct. A better score after removing content is flagged, not presented as proof of improvement. Export is blocked in the UI if generated paragraph words differ from approved content.
-
-Run checks:
+Install requirements-dev.txt for Python tests. Then run:
 
 ```text
-python -m pip install -r requirements-dev.txt
 python -m unittest discover -s tests -v
-npm ci
 npm run build
 npm run lint
+npm run test:ui
 ```
 
-Use examples/beta-sidebar.pdf and examples/simple.docx, plus the resumes you have permission to test. Real uploaded resumes are excluded from this release package. See VALIDATION_V4.md for completed checks and limits.
+For the UI integration check, run from an activated Python environment containing requirements-dev.txt, or set PYTHON to that environment's Python executable. It uses jsdom and the real Python API through TestClient, not a paid external service. See VALIDATION_4.0.1.md.
+
+The three layouts are original implementations guided by the supplied references, adapted to a single reading column. Sample text, original source files and branding from the references are not distributed.
+
+This remains a heuristic parser. A green result is not proof of perfect extraction or employer ATS acceptance. Intentional Additional Information or ambiguous employer overviews may still produce parser findings after a fresh parse. The checklist explains these findings; user approval does not silently erase them from the score.

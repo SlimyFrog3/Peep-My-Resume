@@ -1,16 +1,33 @@
 """One stateless upload endpoint plus optional production frontend hosting."""
 from pathlib import Path
 import logging
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from .parser import parse_resume, ParseError, MAX_BYTES
 
-app = FastAPI(title='Peep-My-Resume API', version='2.0.1')
+from .workflow import ReviewRequest, preview_export, export_docx
+from .templates import TEMPLATES
+
+VERSION = '4.0.1-beta'
+app = FastAPI(title='Peep-My-Resume API', version=VERSION)
+
+@app.middleware('http')
+async def limit_review_body(request: Request, call_next):
+    if request.url.path in {'/review/preview', '/review/export'}:
+        chunks, size = [], 0
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > 2 * 1024 * 1024:
+                return Response('Review request is too large.', status_code=413)
+            chunks.append(chunk)
+        request._body = b''.join(chunks)
+    return await call_next(request)
+
 
 @app.get('/health')
 def health():
-    return {'status': 'ok', 'version': '2.0.1'}
+    return {'status': 'ok', 'version': VERSION}
 
 @app.post('/parse')
 async def parse(file: UploadFile = File(...)):
@@ -24,13 +41,38 @@ async def parse(file: UploadFile = File(...)):
         try:
             return await run_in_threadpool(parse_resume, data, file.filename or '')
         except ParseError as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
+            raise HTTPException(status_code=422, detail=str(error),
+                                headers={'X-Readability-Score': '0'} if str(error).startswith('No readable text') else None) from error
         except Exception as error:
             # Log the failure type, never the uploaded resume or contact details.
             logging.getLogger(__name__).error('Unexpected parser failure: %s', type(error).__name__)
             raise HTTPException(status_code=500, detail='The service could not process this document. Please try again. If it keeps failing, report the issue.') from error
     finally:
         await file.close()
+
+@app.get('/capabilities')
+def capabilities():
+    return {'docxExport': True, 'templates': list(TEMPLATES), 'rubricVersion': '1.0'}
+
+
+@app.get('/templates')
+def templates():
+    return {'templates': list(TEMPLATES.values())}
+
+
+@app.post('/review/preview')
+def preview(request: ReviewRequest):
+    return preview_export(request)
+
+
+@app.post('/review/export')
+def export(request: ReviewRequest):
+    if any(b.resolution == 'pending' and b.text.strip() for b in request.blocks):
+        raise HTTPException(422, 'Place, keep or exclude all pending blocks before exporting.')
+    return Response(export_docx(request.blocks, request.templateId, request.sectionOrder),
+                    media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    headers={'Content-Disposition': 'attachment; filename="Peep-My-Resume.docx"'})
+
 
 # Vite proxies /parse locally. In production FastAPI serves the built frontend.
 dist = Path(__file__).resolve().parent.parent / 'dist'
