@@ -25,11 +25,16 @@ def record_findings(jobs, unassigned, education, other):
         message = (f'The parser read {example} as an employer overview. It detected roles beneath it, but no single job title for the overview.'
                    if len(overviews) == 1 else
                    f'The parser found {len(overviews)} employer overviews with roles beneath them but no single title for each overview (for example, {example}).')
-        findings.append(finding(
+        related = [job for job in jobs if job.get('parentOrganization') in {overview['organization'] for overview in overviews}]
+        complete = bool(related) and all(all(job.get(field) for field in ('title', 'organization', 'dates')) for job in related)
+        note = finding(
             message,
             'If the overview is intentional and the roles below it look right, you can leave it as is. For a flatter layout, list each actual title with its employer and dates, and put shared achievements under the relevant role.',
             'experience',
-        ))
+        )
+        if complete:
+            note['severity'] = 'info'
+        findings.append(note)
     if incomplete:
         missing = [label for key, label in [('title', 'job title'), ('organization', 'employer'), ('dates', 'date range')]
                    if any(not job[key] for job in incomplete)]

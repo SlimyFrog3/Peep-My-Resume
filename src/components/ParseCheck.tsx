@@ -24,6 +24,7 @@ export default function ParseCheck({ check }: { check: ParseCheckResult }) {
     )}</ul> : reasons.length > 0
       ? <ul>{reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
       : <p>No issues flagged in the fields this parser detected. Compare them with the original.</p>}
+    {check.observations?.length ? <div><strong>Recognized structure</strong><ul>{check.observations.map(note => <li key={note.message}><p>{note.message}</p><p>{note.nextStep}</p></li>)}</ul></div> : null}
     <small>Checks this parse only. It doesn’t predict ATS acceptance.</small>
   </div>
 }

@@ -1,24 +1,16 @@
-# Deploy Beta 4.0.2 on the existing Render service
+# Deploy Beta 4.0.3 on the existing Render service
 
 1. Keep the current Git commit as a rollback point.
-2. Extract the ZIP. Upload the **contents inside it** to the root of the existing GitHub repository. Keep backend, src, public, Dockerfile, package.json and render.yaml together. Do not upload an extra wrapper folder.
-3. In GitHub delete the obsolete **backend/ai_review.py** if present. It is absent from this ZIP. The new backend does not import it, but GitHub uploads do not remove old files.
-4. Commit frontend and backend changes together to the branch Render deploys.
-5. In Render remove the obsolete AI_ENABLED, OPENAI_MODEL and OPENAI_API_KEY variables if previously set. This version does not use them.
-6. Wait for the commit deployment, or choose Manual Deploy > Deploy latest commit. Confirm Live and the matching commit.
-7. Open https://peep-my-resume.onrender.com/health and confirm {"status":"ok","version":"4.0.2-beta"}.
-8. Refresh the site. Check the rubric, checklist and observed strengths. A high score with a remaining finding should be yellow with a clear explanation; a score below 55 should be red.
-9. Open Review & create DOCX. Check all three style cards and Modern's muted green.
-10. Move Skills above Experience, reorder two entries within Experience, build the preview and download. Confirm Word shows the same order.
-11. If unplaced text exists, choose its section, keep it as Additional Information or explicitly exclude it. Download should remain blocked while a nonempty block is pending.
-12. Change style or content after previewing; approval/download must reset. Rebuild and approve again.
-13. Test short and long resumes on desktop and phone. Check hover/focus arrow explanations on desktop and visible labels on mobile.
+2. Extract the release ZIP. Upload its CONTENTS into the existing repository root. You should see backend/, src/, public/, Dockerfile, package.json and render.yaml at the same level. Do not upload the wrapper folder or ZIP itself.
+3. Replace matching frontend/backend files together. Ensure backend/structured.py and src/components/RecordEditor.tsx are included. GitHub uploads do not delete obsolete files; backend/ai_review.py can remain deleted from the earlier update.
+4. Commit to Render’s tracked branch. Wait for deployment or choose Manual Deploy > Deploy latest commit. Confirm Live and the matching commit.
+5. Open https://peep-my-resume.onrender.com/health and confirm {"status":"ok","version":"4.0.3-beta"}. /capabilities should still report rubricVersion 1.1.
+6. Refresh the page and upload the original PDF/DOCX again. Older downloaded files are not changed by this update.
+7. Open Review & create DOCX. Inspect detected fields, compare repair suggestions, and try applying a name or education wrap repair. Edit content first if adding/changing wording; then refresh fields/suggestions.
+8. Test all three templates. In the preview verify Export checks passed, record-preservation details and section-spacing verification. A generated regression should block download with an explanation.
+9. Review names, institutions, employer/client relationships, dates and achievements. Resolve placement and approve any additions/omissions. Download and inspect in Word or LibreOffice.
+10. For the supplied Aakash test, expect a unified full-name heading, the degree attached to SMU, three certification records, and 100 before/after in local validation. Employer-group observations remain visible. Check your live result against the original.
+11. Reorder or edit content after previewing and confirm approval is cleared. A child role moved out of its employer group may need correction before it can pass preservation checks.
+12. Test another resume and check mobile/desktop usability. Existing ambiguous resumes can still retain review findings; the update does not force every result green.
 
-Do not upload node_modules, dist, .venv, private environment files, API keys or real resumes. The existing Dockerfile builds the frontend and installs backend requirements. No new Render service, database or paid API is needed.
-
-
-### 4.0.2 acceptance test
-
-Upload the original PDF again, rather than an older reformatted download. Check that duration-annotated dates yield separate job records, education credentials remain with their college, and subject-only education is labeled as a program without inventing a degree. Build each style and confirm the section-spacing verification passes. The supplied test should now score 100 for the original and each fresh export under rubric 1.1. Review the job associations against the original even when green. An equal score is valid; the export does not receive bonus points.
-
-The refreshed templates deliberately use more whitespace and may add pages for long resumes. Wording is not shortened automatically. Check the real downloaded DOCX in Word/LibreOffice for pagination.
+No new service, database or paid API is needed. Do not upload node_modules, dist, .venv, environment files or real resumes to the public repository. No AI provider is active.

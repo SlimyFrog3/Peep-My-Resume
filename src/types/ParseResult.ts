@@ -28,7 +28,7 @@ export const reviewSections = {
   contact: 'Contact', extractedText: 'extracted text',
 } as const
 export type ParseFinding = { message: string; nextStep: string; section: keyof typeof reviewSections }
-export type ParseCheckResult = { status: ParseCheckStatus; reasons: string[]; findings?: ParseFinding[] }
+export type ParseCheckResult = { status: ParseCheckStatus; reasons: string[]; findings?: ParseFinding[]; observations?: ParseFinding[] }
 export type SourceLine = { text: string; page: number | null; region: string; line: number; bbox: number[] | null }
 export type DateValue = { value: string; precision: 'year' | 'month' | 'present' }
 export type JobRecord = {
@@ -45,7 +45,9 @@ export type EducationRecord = { institution: string | null; qualification: strin
 export type CertificationRecord = { name: string; status: string | null; description: string[]; source: SourceLine[] }
 export type LinkRecord = { url: string; method: string; source: SourceLine[] }
 
-export type ReviewBlock = { id: string; section: SectionKey; text: string; source?: SourceLine[]; resolution?: 'pending' | 'include' | 'exclude' }
+export type StructuredRecord = { kind: 'contact' | 'experience' | 'education' | 'certifications'; fields: Record<string, string>; details?: string[]; sourceText: string }
+export type RepairSuggestion = { id: string; title: string; explanation: string; before: string | null; after: string | null }
+export type ReviewBlock = { record?: StructuredRecord | null; suggestions?: RepairSuggestion[]; id: string; section: SectionKey; text: string; source?: SourceLine[]; resolution?: 'pending' | 'include' | 'exclude' }
 export type Readability = {
   score: number | null; status: ParseCheckStatus | 'needs_attention'; rubricVersion: string; note: string
   greenChecklist?: { label: string; met: boolean; action: string }[]
@@ -54,6 +56,8 @@ export type Readability = {
 export type ExportPreview = {
   result: ParseResult
   coverage: { retainedPercent: number; removedTokenCount: number; addedTokenCount: number; removedExamples: string[]; addedExamples: string[]; note: string }
+  recordCheck: { passed: boolean; assessedRecords: number; extraRecords: Record<string, number>; note: string; checks: { blockId: string; kind: string; label: string; passed: boolean; issues: string[]; expectedFields: Record<string, string>; actualFields: Record<string, string | null> }[] }
+  exportQuality: { passed: boolean; approvedScore: number | null; exportScore: number | null; scoreDidNotDecrease: boolean; newFindings: string[]; note: string }
   exportPreservesApprovedWords: boolean
   formattingCheck: { passed: boolean; headingCount: number; checks: { heading: string; beforePt: number; afterPt: number; keptWithNext: boolean }[]; note: string }
   unresolvedBlocks: string[]
@@ -63,5 +67,5 @@ export type ExportPreview = {
 }
 export type TemplateId = 'classic' | 'modern' | 'compact'
 export type ResumeTemplate = { id: TemplateId; name: string; caption: string; font: string; bodyPt: number; namePt: number; headingPt: number; accent: string; margin: number; paragraphAfter: number; headingBefore: number; lineSpacing: number }
-export type ResumeParagraph = { kind: 'name' | 'contact' | 'heading' | 'entry' | 'date' | 'body' | 'bullet' | 'space' | 'link' | 'tenure' | 'subheading'; text: string }
+export type ResumeParagraph = { kind: 'name' | 'contact' | 'heading' | 'entry' | 'date' | 'body' | 'bullet' | 'space' | 'link' | 'tenure' | 'subheading' | 'credential'; text: string }
 export type ResumeDocument = { sections: { key: SectionKey; title: string; blocks: { id: string; paragraphs: ResumeParagraph[] }[] }[] }

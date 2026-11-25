@@ -173,7 +173,13 @@ def education_records(lines):
             result.append(current)
         prev = current['source'][-1] if current['source'] else None
         current['source'].append(line)
-        if is_degree and not current['qualification'] and re.search(r'\s+from\s+', text, re.I):
+        paired_program = re.fullmatch(r'(.+?)\s+\(([^()]+)\)', text)
+        if (not is_degree and paired_program and PROGRAM.search(paired_program[1])
+                and (SCHOOL.search(paired_program[2]) or re.match(r'^[A-Z]{2,}(?:,|$)', paired_program[2]))):
+            current['program'], current['institution'] = paired_program[1], paired_program[2]
+            if period := PERIOD.search(paired_program[1]):
+                current['date'] = date_value(period['end'])
+        elif is_degree and not current['qualification'] and re.search(r'\s+from\s+', text, re.I):
             qualification, institution = re.split(r'\s+from\s+', text, maxsplit=1, flags=re.I)
             period = PERIOD.search(institution)
             current['qualification'] = qualification
@@ -207,11 +213,13 @@ def education_records(lines):
             current['qualification']+=' '+text
         else:
             current['notes'].append(text)
+        # Resolve an explicit pair before the next entry can attach to it.
+        study_key = 'qualification' if current['qualification'] else 'program'
+        if current.get(study_key) and not current['institution']:
+            pair = re.fullmatch(r'(.+?)\s+\(([^()]+)\)', current[study_key])
+            if pair and (SCHOOL.search(pair[2]) or re.match(r'^[A-Z]{2,}(?:,|$)', pair[2])):
+                current[study_key], current['institution'] = pair[1], pair[2]
     for item in result:
-        if item['qualification'] and not item['institution']:
-            match = re.fullmatch(r'(.+?)\s+\(([^()]+)\)',item['qualification'])
-            if match and (SCHOOL.search(match[2]) or re.match(r'^[A-Z]{2,}(?:,|$)',match[2])):
-                item['qualification'],item['institution']=match[1],match[2]
         item['source']=[l.evidence() for l in item['source']]
     return result
 
@@ -220,7 +228,10 @@ def certification_records(lines):
     records=[]
     for line in lines:
         marker=line.text.strip().casefold() in {'certificate','certification'}
-        if records:
+        if records and records[-1][0].record_start and not line.record_start:
+            records[-1].append(line)
+            continue
+        if records and not line.record_start:
             first,prev=records[-1][0],records[-1][-1]
             indented=(first.box and line.box and first.page==line.page and first.region==line.region
                       and line.box[0]>first.box[0]+7)
@@ -239,7 +250,10 @@ def certification_records(lines):
             if l.text.strip().casefold() in {'certificate','certification'} and len(block)>1:
                 continue
             (details if l.box and block[0].box and l.box[0]>block[0].box[0]+7 else title).append(l)
-        name=' '.join(reflow(title,True))
+        if block[0].record_start:
+            title = [line for line in block if line.record_title] or block[:1]
+            details = [line for line in block if line not in title]
+        name = re.sub(r'(?<=\w)-\s+(?=\w)', '-', ' '.join(reflow(title,True)))
         output.append({'name':name,'status':'In progress' if re.search(r'\bin progress\b',name,re.I) else None,
                        'description':reflow(details),'source':[l.evidence() for l in block]})
     return output

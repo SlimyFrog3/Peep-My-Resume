@@ -1,10 +1,19 @@
-# Peep My Resume Beta 4.0.2
+# Peep My Resume Beta 4.0.3
 
 Upload a PDF or DOCX to see how our parser reads it, review the readability score, arrange your content, and export an editable resume in one of three styles.
 
-Start with [REDEPLOY.md](REDEPLOY.md), [PATCH_NOTES_4.0.2.md](PATCH_NOTES_4.0.2.md), and [SCORING.md](SCORING.md).
+Start with [REDEPLOY.md](REDEPLOY.md), [PATCH_NOTES_4.0.3.md](PATCH_NOTES_4.0.3.md), and [SCORING.md](SCORING.md).
 
-## What changed in 4.0.2
+## What changed in 4.0.3
+
+- Review entries carry evidence-backed structured fields for a full name, employment, education and certifications, plus supporting descriptions where detected. Templates reconnect confirmed fields instead of treating every extracted line as a new paragraph.
+- The editor shows detected fields, lets you assign wording already in the content, and provides before/after formatting repairs. Editing content clears stale fields; Refresh fields & suggestions rebuilds detection. New wording still goes through the existing additions/omissions approval.
+- Actual generated DOCX records are compared against approved entries: fields, employer-group relationships and supporting text. Equal counts or a 100 score alone do not pass this check.
+- Downloads are blocked if record preservation, word preservation, section spacing, score non-regression against approved content, or new-finding checks fail. The direct export API enforces the same guard.
+- Names remain one title, wrapped degree/school pairs remain connected, and certifications use normal Word Heading 2 titles so descriptions stay under their credential.
+- Complete, detected employer groups are informational observations. Incomplete child roles remain actionable findings; no job title or employer is invented.
+
+## Earlier fixes in 4.0.2
 
 - Date ranges followed by a parenthesized duration now parse correctly, including grouped roles under an employer heading and total tenure. Employer inheritance requires an explicit grouped-employer anchor; ordinary missing employers remain flagged.
 - Plain Education keeps its own college credentials. Recognized subject/program descriptions are separate from awarded qualifications; no degree is inferred. Rubric 1.1 accepts a school/program association, with the same 30/25/25/20 weights.
@@ -52,9 +61,10 @@ Open Vite's Local URL, normally http://localhost:5173. Both terminals stay runni
 5. Arrange whole sections with section arrows. Arrange entries within a section with entry arrows. Use the dropdown to move an entry to a different section.
 6. Edit source text and verify names, dates, achievements and associations against the original. Insert blank lines to split mixed content into separate entries.
 7. Resolve “Needs placement” blocks. You can include them under Additional Information or exclude them explicitly. Nothing is silently thrown away.
-8. Build the preview. The backend creates the actual DOCX, reparses it and checks approved word preservation and real DOCX section spacing. Pending text is included in the preview for inspection but blocks download until resolved.
-9. Inspect the original/new scores and word additions/omissions. A simpler layout does not guarantee a higher score.
-10. Approve the content and any additions/omissions, then download. The browser downloads the exact DOCX bytes returned with that preview.
+8. Inspect Detected fields and relationships. Assign existing text to the appropriate fields when necessary. Review and optionally apply formatting repairs; use Refresh fields & suggestions after editing.
+9. Build the preview. The backend creates the actual DOCX, reparses it and checks approved word preservation, record associations and real DOCX section spacing. Review the Export checks panel; generation regressions block download. Pending text is included in the preview for inspection but blocks download until resolved.
+10. Inspect the original/new scores and word additions/omissions. A simpler layout does not guarantee a higher score.
+11. Approve the content and any additions/omissions, then download. The browser downloads the exact DOCX bytes returned with that preview.
 
 Changing content, section order, entry order or template clears the preview and approvals. The selected template controls typography and spacing; it does not rearrange sections. Long content gains pages naturally. The browser preview matches the content model and style settings, but Word/LibreOffice determine exact page breaks and font substitution.
 
@@ -77,6 +87,7 @@ PDF export is deferred. examples/classic-style.docx, modern-style.docx and compa
 | backend/review.py | Findings and recommended next steps |
 | backend/scoring.py | Deterministic 30/25/25/20 rubric and observed strengths |
 | backend/templates.py | Shared style definitions for three DOCX layouts |
+| backend/structured.py | Evidence-backed record fields, safe line-wrap formatting and specific repair suggestions |
 | backend/workflow.py | Validated ordered blocks, shared document model, DOCX export, reparse and preservation checks |
 
 Pdfplumber reads PDFs; python-docx reads and generates DOCX files. They run inside the backend. No external parsing or AI service is called.
@@ -87,14 +98,15 @@ The document model contains ordered sections, ordered blocks and paragraphs with
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | /health | Version 4.0.1-beta and health |
+| GET | /health | Version 4.0.3-beta and health |
 | GET | /capabilities | Export capability, template IDs and rubric version |
 | GET | /templates | Three style definitions |
 | POST | /parse | Multipart PDF/DOCX upload |
-| POST | /review/preview | Generate actual DOCX, reparse and return document model, comparison, unresolved IDs and DOCX bytes as base64 |
-| POST | /review/export | Direct DOCX export for API clients; rejects unresolved placement |
+| POST | /review/prepare | Refresh structured field detection and repair suggestions from reviewed blocks |
+| POST | /review/preview | Generate actual DOCX, reparse and return document model, comparison, record preservation, export quality, unresolved IDs and DOCX bytes as base64 |
+| POST | /review/export | Direct DOCX export for API clients; rejects unresolved placement and failed export checks |
 
-Preview/export requests contain original and blocks arrays. Each block has id, section, text and resolution (pending, include or exclude). Requests also include templateId (classic, modern, compact) and sectionOrder (all known section IDs, each exactly once). Defaults preserve compatibility with older API clients.
+Preview/export requests contain original and blocks arrays. Each block has id, section, text and resolution (pending, include or exclude). A block may include record with kind, fields, sourceText, and details. Fields and supporting detail strings must be backed by that entry’s text; stale records are rejected. Parent organization is context checked by the export relationship comparison. Requests also include templateId (classic, modern, compact) and sectionOrder (all known section IDs, each exactly once). Defaults preserve compatibility with older API clients.
 
 Inputs are limited to 100 blocks, 40,000 characters per block, 200,000 characters per version and a 2 MiB review request body. Empty included resumes, duplicate IDs, unknown templates and invalid section orders are rejected.
 
@@ -115,8 +127,17 @@ npm run lint
 npm run test:ui
 ```
 
-For the UI integration check, run from an activated Python environment containing requirements-dev.txt, or set PYTHON to that environment's Python executable. It uses jsdom and the real Python API through TestClient, not a paid external service. See VALIDATION_4.0.1.md.
+For the UI integration check, run from an activated Python environment containing requirements-dev.txt, or set PYTHON to that environment's Python executable. It uses jsdom and the real Python API through TestClient, not a paid external service. See VALIDATION_4.0.3.md.
 
 The three layouts are original implementations guided by the supplied references, adapted to a single reading column. Sample text, original source files and branding from the references are not distributed.
 
-This remains a heuristic parser. A green result is not proof of perfect extraction or employer ATS acceptance. Intentional Additional Information or ambiguous employer overviews may still produce parser findings after a fresh parse. The checklist explains these findings; user approval does not silently erase them from the score.
+This remains a heuristic parser. A green result is not proof of perfect extraction or employer ATS acceptance. Intentional Additional Information or incomplete employer groups may still produce parser findings after a fresh parse. The checklist explains these findings; user approval does not silently erase them from the score.
+
+
+## What the export guard means
+
+The uploaded original, your approved edits and the actual exported file are distinct. Original-to-edited word changes remain visible for approval. Record preservation compares the generated file with your approved entries, including intentional exclusions. The quality score baseline is a fresh parse of the approved, normalized content; deliberate user edits are not misreported as generator damage to the original.
+
+Each known record is matched to a recovered record using content overlap, then its fields and supporting word counts are compared. Extra recovered records are reported. This catches descriptions moving between roles or one certification becoming many fragments. It does not prove factual accuracy, preserve all punctuation or validate employer ATS behavior. Only detected/assigned structured entries are assessed; the UI reports the count. Unrecognized content still needs placement/review, and ambiguous multi-entry blocks may need splitting.
+
+Word checks normalize a hyphenated word at an extracted line break so a formatting repair does not look like word deletion. School/qualification pairs can be placed together with parentheses, without expanding abbreviations or adding claims. No AI rewriting, automatic condensation or PDF export is added.

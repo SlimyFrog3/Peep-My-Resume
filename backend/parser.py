@@ -16,6 +16,7 @@ from .links import recover_links
 from .records import certification_records, education_records, experience_records, job_start, reflow
 from .review import finding, record_findings
 from .scoring import score_result
+from .structured import record_spec, repair_suggestions
 
 MAX_BYTES = 10 * 1024 * 1024
 MAX_TEXT = 200_000
@@ -142,9 +143,9 @@ def _read_document(data: bytes, filename: str):
             document = Document(BytesIO(data))
             def add_paragraph(paragraph):
                 texts = paragraph.text.splitlines()
-                for text in texts:
+                for index, text in enumerate(texts):
                     if text.strip():
-                        main.append(Line(text, number=len(main)+1))
+                        main.append(Line(text, number=len(main)+1, record_start=paragraph.style.name == 'Heading 2' and index == 0, record_title=paragraph.style.name == 'Heading 2'))
                 for link in paragraph.hyperlinks:
                     if link.url:
                         embedded.append((link.url, Line(link.text, region='annotation', number=len(main))))
@@ -294,6 +295,8 @@ def _classify(main, sidebar, embedded=(), notes=(), issues=()):
         issues.append(finding('No email or phone number was detected.',
                               'Check that your contact details are selectable text near the top of the resume. Include the country code for an international number. The parser can still miss some formats.',
                               'contact' if sections['contact'] else 'extractedText'))
+    observations = [issue for issue in issues if issue.get('severity') == 'info']
+    issues = [issue for issue in issues if issue.get('severity') != 'info']
     has_fields = bool(jobs or education or any(sections[k] for k in ('skills', 'summary', 'certifications', 'experience', 'projects')))
     if not has_fields:
         status = 'could_not_assess'
@@ -307,7 +310,7 @@ def _classify(main, sidebar, embedded=(), notes=(), issues=()):
     result = {**sections, 'extractedText': raw, 'warnings': notes + reasons,
             'workExperience': jobs, 'unassignedExperience': ungrouped_jobs,
             'educationRecords': education, 'certificationRecords': certification_records(groups['certifications']), 'linkRecords': links,
-            'parseCheck': {'status': status, 'reasons': reasons, 'findings': issues}}
+            'parseCheck': {'status': status, 'reasons': reasons, 'findings': issues, 'observations': observations}}
     result['excludedFurniture'] = list(dict.fromkeys(line.text for line in furniture))
     # Review uses literal extracted lines, rather than generated descriptions.
     blocks = []
@@ -334,6 +337,11 @@ def _classify(main, sidebar, embedded=(), notes=(), issues=()):
     if links:
         blocks.append({'id': f'b{len(blocks)+1}', 'section': 'links',
                        'text': '\n'.join(link['url'] for link in links), 'source': []})
+    for block in blocks:
+        candidates = records_by_section.get(block['section'], [])
+        parsed = next((record for record in candidates if record['source'] and all(source in block['source'] for source in record['source'])), None)
+        block['record'] = record_spec(block['section'], block['text'], parsed)
+        block['suggestions'] = repair_suggestions(block)
     result['reviewBlocks'] = blocks
     result['readability'] = score_result(result)
     return result

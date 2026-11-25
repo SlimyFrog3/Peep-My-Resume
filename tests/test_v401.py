@@ -24,7 +24,7 @@ class Release401Tests(unittest.TestCase):
         paths=self.client.get('/openapi.json').json()['paths']
         self.assertNotIn('/ai/review',paths)
         self.assertNotIn('aiEnabled', self.client.get('/capabilities').json())
-        self.assertEqual(self.client.get('/health').json()['version'],'4.0.2-beta')
+        self.assertEqual(self.client.get('/health').json()['version'],'4.0.3-beta')
 
     def test_three_template_choices_and_muted_green(self):
         choices=self.client.get('/templates').json()['templates']

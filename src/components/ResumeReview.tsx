@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { sections, type ExportPreview, type ParseResult, type ReviewBlock, type ResumeTemplate, type SectionKey, type TemplateId } from '../types/ParseResult'
-import { downloadPreview, getTemplates, previewResume } from '../services/reviewApi'
+import { downloadPreview, getTemplates, previewResume, prepareRecords } from '../services/reviewApi'
 import ReadabilityScore from './ReadabilityScore'
 import TemplateChooser from './TemplateChooser'
 import ResumeDocumentPreview from './ResumeDocumentPreview'
 import MoveButton from './MoveButton'
+import RecordEditor from './RecordEditor'
 
 export default function ResumeReview({ result, demoMode }: { result: ParseResult; demoMode: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -36,7 +37,7 @@ export default function ResumeReview({ result, demoMode }: { result: ParseResult
   }
   function edit(next: ReviewBlock[]) { setBlocks(next); invalidate() }
   function update(id: string, patch: Partial<ReviewBlock>) {
-    edit(blocks.map(b => b.id === id ? { ...b, ...patch } : b))
+    edit(blocks.map(b => b.id === id ? { ...b, ...patch, ...(('text' in patch || 'section' in patch) ? { record: null, suggestions: [] } : {}) } : b))
   }
   const activeSections = order.filter(key => blocks.some(b => b.section === key))
   function moveSection(key: SectionKey, delta: number) {
@@ -54,13 +55,17 @@ export default function ResumeReview({ result, demoMode }: { result: ParseResult
   }
   async function check() {
     setBusy(true); setError('')
-    try { setPreview(await previewResume(result.reviewBlocks, blocks, templateId, order)); setTab('preview') }
+    try {
+      const prepared = await prepareRecords(result.reviewBlocks, blocks)
+      setBlocks(prepared); setApproved(false); setChangesAccepted(false)
+      setPreview(await previewResume(result.reviewBlocks, prepared, templateId, order)); setTab('preview')
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not preview the file.') }
     finally { setBusy(false) }
   }
   const changed = preview && (preview.coverage.removedTokenCount > 0 || preview.coverage.addedTokenCount > 0)
   const pending = blocks.filter(b => b.resolution === 'pending' && b.text.trim())
-  const canDownload = preview?.exportPreservesApprovedWords && preview.formattingCheck.passed && !preview.unresolvedBlocks.length && approved && (!changed || changesAccepted)
+  const canDownload = preview?.exportQuality.passed && preview.recordCheck.passed && preview.exportPreservesApprovedWords && preview.formattingCheck.passed && !preview.unresolvedBlocks.length && approved && (!changed || changesAccepted)
   return <div className="review-launch">
     <h3>Make a cleaner copy</h3><p>Choose a style, arrange your sections, and review every word before exporting an editable DOCX.</p>
     <button className="primary" disabled={demoMode} onClick={() => dialog.current?.showModal()}>Review &amp; create DOCX</button>
@@ -99,12 +104,18 @@ export default function ResumeReview({ result, demoMode }: { result: ParseResult
                   <MoveButton direction="down" label={`Move entry ${i+1} down within ${label}`} disabled={i === entries.length - 1} onClick={() => moveBlock(block, 1)} />
                 </div>
                 {block.resolution === 'pending' && <p className="placement-status"><strong>Needs placement.</strong> Use the section dropdown or choose an option below.</p>}
+                <RecordEditor key={JSON.stringify([block.section, block.text, block.record])} block={block} onAssign={record => update(block.id, { record, suggestions: [] })} />
+                {block.suggestions?.map(suggestion => <div className="repair-suggestion" key={suggestion.id}>
+                  <strong>{suggestion.title}</strong><p>{suggestion.explanation}</p>
+                  {suggestion.after !== null && <><details><summary>Compare the proposed repair</summary><p>Before</p><pre>{suggestion.before}</pre><p>After</p><pre>{suggestion.after}</pre></details>
+                    <button className="browse" onClick={() => update(block.id, { text: suggestion.after! })}>Apply formatting repair</button></>}
+                </div>)}
                 <label className="text-label">Content<textarea value={block.text} onChange={e => update(block.id, { text: e.target.value })} rows={Math.min(15, Math.max(4, block.text.split('\n').length))} /></label>
                 <div className="entry-actions">
                   <button className="browse" disabled={!/\n\s*\n/.test(block.text) || blocks.length >= 100} onClick={() => {
                     const pieces = block.text.split(/\n\s*\n/).filter(s => s.trim())
                     if (blocks.length - 1 + pieces.length > 100) { setError('Split would exceed 100 blocks. Use fewer blank-line groups.'); return }
-                    edit(blocks.flatMap(b => b.id === block.id ? pieces.map(text => ({ ...block, id: crypto.randomUUID(), text })) : [b]))
+                    edit(blocks.flatMap(b => b.id === block.id ? pieces.map(text => ({ ...block, id: crypto.randomUUID(), text, record: null, suggestions: [] })) : [b]))
                   }}>Split at blank lines</button>
                   {block.section === 'other' && block.resolution !== 'include' && <button className="browse" onClick={() => update(block.id, { resolution: 'include' })}>Keep as Additional Information</button>}
                   {block.resolution === 'exclude' ? <button className="browse" onClick={() => update(block.id, { resolution: block.section === 'other' ? 'pending' : 'include' })}>Restore entry</button>
@@ -119,6 +130,12 @@ export default function ResumeReview({ result, demoMode }: { result: ParseResult
           {result.excludedFurniture.length > 0 && <details><summary>Excluded repeated headers and page numbers — review or restore</summary>
             {result.excludedFurniture.map((text, i) => <div key={i}><pre>{text}</pre><button className="browse" disabled={blocks.length >= 100} onClick={() => edit([...blocks, { id: crypto.randomUUID(), section: 'other', text, resolution: 'pending' }])}>Restore to review</button></div>)}
           </details>}
+          <button className="browse" onClick={async () => {
+            setBusy(true); setError('')
+            try { const refreshed = await prepareRecords(result.reviewBlocks, blocks); edit(refreshed) }
+            catch (e) { setError(e instanceof Error ? e.message : 'Could not refresh records.') }
+            finally { setBusy(false) }
+          }}>Refresh fields &amp; suggestions</button>
           <details><summary>Compare original extracted text</summary><pre>{result.extractedText}</pre></details>
           <button className="primary" disabled={!templates.length || !blocks.some(b => b.text.trim() && b.resolution !== 'exclude')} onClick={() => void check()}>Build preview &amp; reparse DOCX</button>
         </> : <>
@@ -135,6 +152,20 @@ export default function ResumeReview({ result, demoMode }: { result: ParseResult
               <p>{preview.formattingCheck.headingCount} section headings checked in the actual DOCX for clear spacing above and below. Each heading stays with its following paragraph.</p>
               <p>{preview.formattingCheck.note}</p>
               {!preview.formattingCheck.passed && <p className="error">Download is blocked because the generated file failed its section-spacing check. Rebuild the preview; if it persists, report the issue.</p>}
+            </div>
+            <div className={`content-check ${preview.exportQuality.passed ? 'quality-passed' : 'quality-failed'}`} role="status">
+              <strong>{preview.exportQuality.passed ? 'Export checks passed' : 'The generated copy needs correction'}</strong>
+              <p>{preview.recordCheck.assessedRecords} structured entries checked for field associations and supporting text. Approved content score: {preview.exportQuality.approvedScore ?? 'Unavailable'}; exported score: {preview.exportQuality.exportScore ?? 'Unavailable'}.</p>
+              <p>{preview.exportQuality.note}</p>
+              {!preview.exportQuality.passed && <p>Download is blocked. Review the differences below, return to editing, and rebuild. If your approved entries are correct, this may be a generator or parser limitation.</p>}
+              {preview.exportQuality.newFindings.length > 0 && <ul>{preview.exportQuality.newFindings.map(message => <li key={message}>{message}</li>)}</ul>}
+              <details><summary>Record preservation details</summary>
+                <p>{preview.recordCheck.note}</p>
+                {preview.recordCheck.checks.map(check => <div key={check.blockId}><strong>{check.passed ? '✓ Preserved' : 'Needs correction'}: {check.label}</strong>
+                  {check.issues.length > 0 && <ul>{check.issues.map(issue => <li key={issue}>{issue}</li>)}</ul>}
+                </div>)}
+                {Object.entries(preview.recordCheck.extraRecords).map(([kind, count]) => <p key={kind}>{count} unexpected {kind} records appeared after export.</p>)}
+              </details>
             </div>
             <h3>{preview.template.name}</h3>
             <ResumeDocumentPreview document={preview.document} template={preview.template} />

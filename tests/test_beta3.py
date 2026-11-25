@@ -68,8 +68,8 @@ class BetaTests(unittest.TestCase):
         self.assertEqual(result['unassignedExperience'], [])
         self.assertTrue(result['workExperience'][0]['isEmployerOverview'])
         self.assertEqual(result['workExperience'][1]['title'], 'QA MANAGER')
-        self.assertEqual(result['parseCheck']['status'], 'needs_review')
-        finding, = result['parseCheck']['findings']
+        self.assertEqual(result['parseCheck']['status'], 'looks_good')
+        finding, = result['parseCheck']['observations']
         self.assertIn('FICTIONAL LABS as an employer overview', finding['message'])
         self.assertIn('leave it as is', finding['nextStep'])
 
@@ -88,4 +88,4 @@ class BetaTests(unittest.TestCase):
         self.assertEqual(result['other'], ['Custom list'])
 
     def test_health_reports_beta(self):
-        self.assertEqual(TestClient(app).get('/health').json()['version'],'4.0.2-beta')
+        self.assertEqual(TestClient(app).get('/health').json()['version'],'4.0.3-beta')

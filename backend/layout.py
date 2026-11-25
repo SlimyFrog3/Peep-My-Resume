@@ -11,6 +11,8 @@ class Line:
     region: str = 'main'
     number: int = 0
     box: tuple | None = None
+    record_start: bool = False
+    record_title: bool = False
 
     def evidence(self):
         return {'text': self.text, 'page': self.page, 'region': self.region,

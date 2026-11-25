@@ -24,7 +24,7 @@ A document with text but too little recognizable resume information shows **Coul
 
 **100/100** means all these checks passed; it does not prove all information was extracted. It is possible to receive 100 and still have an amber review finding, such as an employer overview that warrants checking.
 
-Green **Looks good** requires a score at least 90 and no review findings. Other assessable results of 55 or above are yellow **Needs review**. Scores below 55 are red **Needs attention**. Unassessable results/errors are red. The original and actual generated DOCX are scored with the same rubric version.
+Green **Looks good** requires a score at least 90 and no actionable review findings. Other assessable results of 55 or above are yellow **Needs review**. Scores below 55 are red **Needs attention**. Unassessable results/errors are red. The original and actual generated DOCX are scored with the same rubric version.
 
 Scores may stay the same or decrease after reformatting. The comparison reports word additions and omissions independently, and requires review of changes before download.
 
@@ -43,3 +43,10 @@ A 98 or 100 with a remaining finding stays yellow. User approval is not substitu
 The weights and numeric formula remain 30/25/25/20. An education record can pair a named institution with an explicitly detected field of study/program as well as an awarded qualification. The API distinguishes `program` from `qualification`, and the UI labels a program without inferring a degree. A school alone still raises a finding. These checks measure readable associations, not whether someone graduated or holds an award.
 
 Formatting verification is separate from the score. The generated DOCX must contain real Heading 1 paragraphs with at least 18 pt before, 8 pt after and keep-with-next; download is blocked if this check fails. Spacing does not automatically award association points or erase other findings. Equal original/export scores are valid when both files are already readable by these checks.
+
+
+## Export verification in 4.0.3
+
+The numeric weights are unchanged. A recognized employer overview with complete linked roles is informational and does not prevent green; incomplete records remain findings. User approval does not erase an unresolved parser error.
+
+Export verification is separate from the score. Known structured records must retain their approved fields and supporting text after reparsing. New findings, a lower score than the approved-content baseline, lost words or failed heading spacing block download. Original-to-approved edits are still disclosed separately. A file can score 100 and fail export verification because record structure changed. The UI reports both results.

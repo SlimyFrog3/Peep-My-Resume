@@ -58,6 +58,13 @@ def style_paragraph(para, kind, template_id):
         para.style = 'Title'
     elif kind == 'heading':
         para.style = 'Heading 1'
+    elif kind == 'credential':
+        para.style = 'Heading 2'
+        para.style.font.size = Pt(style['bodyPt'])
+        para.style.font.bold = True
+        para.paragraph_format.space_before = Pt(10)
+        para.paragraph_format.space_after = Pt(style['paragraphAfter'])
+        para.paragraph_format.keep_with_next = True
     elif kind == 'bullet':
         para.style = 'List Bullet'
     if kind == 'entry':

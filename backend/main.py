@@ -6,15 +6,15 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from .parser import parse_resume, ParseError, MAX_BYTES
 
-from .workflow import ReviewRequest, preview_export, export_docx
+from .workflow import ReviewRequest, preview_export, prepare_blocks
 from .templates import TEMPLATES
 
-VERSION = '4.0.2-beta'
+VERSION = '4.0.3-beta'
 app = FastAPI(title='Peep-My-Resume API', version=VERSION)
 
 @app.middleware('http')
 async def limit_review_body(request: Request, call_next):
-    if request.url.path in {'/review/preview', '/review/export'}:
+    if request.url.path in {'/review/preview', '/review/export', '/review/prepare'}:
         chunks, size = [], 0
         async for chunk in request.stream():
             size += len(chunk)
@@ -60,6 +60,11 @@ def templates():
     return {'templates': list(TEMPLATES.values())}
 
 
+@app.post('/review/prepare')
+def prepare(request: ReviewRequest):
+    return {'blocks': prepare_blocks(request.blocks, request.original)}
+
+
 @app.post('/review/preview')
 def preview(request: ReviewRequest):
     return preview_export(request)
@@ -69,7 +74,11 @@ def preview(request: ReviewRequest):
 def export(request: ReviewRequest):
     if any(b.resolution == 'pending' and b.text.strip() for b in request.blocks):
         raise HTTPException(422, 'Place, keep or exclude all pending blocks before exporting.')
-    return Response(export_docx(request.blocks, request.templateId, request.sectionOrder),
+    preview = preview_export(request)
+    if not preview['exportQuality']['passed']:
+        raise HTTPException(422, 'The generated copy needs correction. Review record preservation and export findings before downloading.')
+    from base64 import b64decode
+    return Response(b64decode(preview['docxBase64']),
                     media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                     headers={'Content-Disposition': 'attachment; filename="Peep-My-Resume.docx"'})
 

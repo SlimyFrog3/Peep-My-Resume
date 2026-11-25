@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator, field_valida
 from docx import Document
 from .templates import TEMPLATES, style_document, style_paragraph
 from .records import PERIOD, TENURE, _period, _role
+from .structured import record_spec, valid_spec, normalize_record_text, repair_suggestions, FIELD_LABELS
 
 SECTION_TITLES = {
     'contact': 'Contact', 'summary': 'Professional Summary', 'experience': 'Experience',
@@ -19,12 +20,36 @@ Section = Literal['contact','summary','experience','education','skills','certifi
                   'projects','leadership','volunteer','links','awards','languages','other']
 
 
+class StructuredRecord(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    kind: Literal['contact', 'experience', 'education', 'certifications']
+    fields: dict[Literal['fullName','organization','title','dates','location','parentOrganization',
+                         'institution','qualification','program','credential'], str] = Field(min_length=1)
+    sourceText: str = Field(max_length=40000)
+    details: list[str] = Field(default_factory=list, max_length=1000)
+
+    @model_validator(mode='after')
+    def fields_match_record_kind(self):
+        allowed = {'contact': {'fullName'}, 'experience': {'organization','title','dates','location','parentOrganization'},
+                   'education': {'institution','qualification','program'}, 'certifications': {'credential'}}
+        if not set(self.fields).issubset(allowed[self.kind]) or any(not value.strip() or len(value) > 40000 for value in self.fields.values()):
+            raise ValueError('Use nonempty fields belonging to this record type.')
+        return self
+
+
 class Block(BaseModel):
     model_config = ConfigDict(extra='forbid')
     id: str = Field(min_length=1, max_length=80)
     section: Section
     text: str = Field(max_length=40000)
     resolution: Literal['pending', 'include', 'exclude'] = 'include'
+    record: StructuredRecord | None = None
+
+    @model_validator(mode='after')
+    def record_has_evidence(self):
+        if self.record and not valid_spec(self.section, self.text, self.record.model_dump()):
+            raise ValueError('Record fields no longer match the content. Refresh record detection after editing.')
+        return self
 
     @field_validator('text')
     @classmethod
@@ -56,6 +81,8 @@ class ReviewRequest(BaseModel):
 
 
 def tokens(text):
+    # A word hyphenated at an extracted line break is the same word after repair.
+    text = re.sub(r'(?<=\w)-[ \t]*\n[ \t]*(?=\w)', '-', text)
     return Counter(re.findall(r"\w+(?:['’-]\w+)*", text.casefold()))
 
 
@@ -72,7 +99,10 @@ def coverage(original, reviewed):
 def paragraphs_for(block):
     """Formatting roles only: the user's words stay untouched."""
     output = []
-    for i, line in enumerate(block.text.splitlines()):
+    spec = block.record.model_dump() if block.record else record_spec(block.section, block.text)
+    text = normalize_record_text(block.text, spec) if spec else block.text
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
         if not line.strip():
             output.append({'kind': 'space', 'text': ''})
             continue
@@ -80,15 +110,17 @@ def paragraphs_for(block):
         kind = 'body'
         if bullet:
             kind, line = 'bullet', line[bullet.end():]
+        elif block.section == 'certifications' and spec and line.strip() == spec['fields'].get('credential'):
+            kind = 'credential'
         elif block.section == 'links':
             kind = 'link'
         elif block.section == 'contact':
-            kind = 'name' if i == 0 and len(line.split()) <= 6 and not re.search(r'[@\d]|https?://', line) else 'contact'
+            kind = 'name' if (spec and line.strip() == spec['fields'].get('fullName')) or (not spec and i == 0 and len(line.split()) <= 6 and not re.search(r'[@\d]|https?://', line)) else 'contact'
         elif block.section in {'experience', 'education', 'projects', 'certifications'}:
             match = _period(line.strip())
             if match and match.start() == 0:
                 kind = 'date'
-            elif i == 0 or (_role(line.strip()) and i + 1 < len(block.text.splitlines()) and _period(block.text.splitlines()[i+1].strip())):
+            elif i == 0 or (_role(line.strip()) and i + 1 < len(lines) and _period(lines[i+1].strip())):
                 kind = 'entry'
             elif TENURE.fullmatch(line.strip()):
                 kind = 'tenure'
@@ -98,7 +130,7 @@ def paragraphs_for(block):
         if (kind == 'body' and output and output[-1]['kind'] in {'body', 'bullet'}
                 and not re.match(r'^(?:https?://|www\.)', line, re.I) and line[:1].islower() and output[-1]['text'] and
                 not output[-1]['text'].endswith(('.', '!', '?', ';', ':'))):
-            output[-1]['text'] += ' ' + line
+            output[-1]['text'] += ('' if output[-1]['text'].endswith('-') else ' ') + line
         else:
             output.append({'kind': kind, 'text': line})
     return output
@@ -110,7 +142,7 @@ def build_document_model(blocks, section_order):
         chosen = [b for b in blocks if b.section == key and b.resolution != 'exclude' and b.text.strip()]
         if chosen:
             sections.append({'key': key, 'title': SECTION_TITLES[key],
-                             'blocks': [{'id': b.id, 'paragraphs': paragraphs_for(b)} for b in chosen]})
+                             'blocks': [{'id': b.id, 'record': b.record.model_dump() if b.record else record_spec(b.section, b.text), 'paragraphs': paragraphs_for(b)} for b in chosen]})
     return {'sections': sections}
 
 
@@ -154,18 +186,95 @@ def inspect_section_spacing(doc):
             'note': 'Checks actual DOCX heading tags, minimum spacing and keep-with-next. It does not certify correct field associations.'}
 
 
+def prepare_blocks(blocks, originals=()):
+    prepared = []
+    for block in blocks:
+        item = block.model_dump()
+        if not item['record']:
+            old = next((b.record for b in originals if b.id == block.id and b.section == block.section and b.record), None)
+            rebased = {**old.model_dump(), 'sourceText': block.text} if old else None
+            item['record'] = rebased if valid_spec(block.section, block.text, rebased) else record_spec(block.section, block.text)
+        item['suggestions'] = repair_suggestions(item)
+        prepared.append(item)
+    return prepared
+
+
+def approved_baseline(blocks, section_order):
+    from .parser import group_sections
+    model = build_document_model(blocks, section_order)
+    text = '\n'.join(('' if s['key'] == 'contact' else s['title'] + '\n') +
+                     '\n'.join(p['text'] for b in s['blocks'] for p in b['paragraphs']) for s in model['sections'])
+    return group_sections(text)
+
+
+def check_records(blocks, parsed, actual):
+    """Compare independent approved fields and per-record content, not counts alone."""
+    checks = []
+    pools = {'experience': list(parsed['workExperience']), 'education': list(parsed['educationRecords']),
+             'certifications': list(parsed['certificationRecords'])}
+    for block in blocks:
+        spec = block.record.model_dump() if block.record else record_spec(block.section, block.text)
+        if not spec:
+            continue
+        fields = spec['fields']
+        issues = []
+        label = next((fields[k] for k in ('fullName','credential','qualification','program','title','organization','institution') if fields.get(k)), block.id)
+        observed = {}
+        if block.section == 'contact':
+            name = fields.get('fullName')
+            if name:
+                titles = [p.text.strip() for p in actual.paragraphs if p.style.name == 'Title']
+                if name not in titles or name not in parsed['contact']:
+                    issues.append('The full name did not survive as one consistently styled name heading.')
+                observed['fullName'] = next((value for value in titles if value == name), None)
+        else:
+            candidates = pools[block.section]
+            expected = tokens(block.text)
+            item = max(candidates, key=lambda r: sum((expected & tokens('\n'.join(s['text'] for s in r['source']))).values()), default=None)
+            if item:
+                candidates.remove(item)
+                observed = ({'credential': item['name']} if block.section == 'certifications' else
+                            {**item, 'dates': (item.get('dates') or {}).get('raw')} if block.section == 'experience' else item)
+                for key, value in fields.items():
+                    found = observed.get(key)
+                    if not found or tokens(value) != tokens(found):
+                        issues.append(f"{FIELD_LABELS[key]} changed or could not be recovered from this entry.")
+                recovered = tokens('\n'.join(s['text'] for s in item['source']))
+                if recovered != expected:
+                    issues.append('Supporting text was lost, split, merged or attached to a different record.')
+            else:
+                issues.append('This approved record could not be recovered from the generated file.')
+        checks.append({'blockId': block.id, 'kind': block.section, 'label': label, 'passed': not issues,
+                       'issues': issues, 'expectedFields': fields,
+                       'actualFields': {key: observed.get(key) for key in fields}})
+    # Detect extra records too, including certification descriptions mistaken for credentials.
+    extras = {kind: len(items) for kind, items in pools.items() if items and any(c['kind'] == kind for c in checks)}
+    return {'passed': all(c['passed'] for c in checks) and not extras, 'checks': checks,
+            'assessedRecords': len(checks), 'extraRecords': extras,
+            'note': 'Compares detected fields and supporting text with your approved entries. It cannot verify factual accuracy or another ATS.'}
+
+
 def preview_export(request):
     from .parser import parse_resume
     import base64
     data = export_docx(request.blocks, request.templateId, request.sectionOrder)
     parsed = parse_resume(data, 'Peep-My-Resume.docx')
-    approved = [b for b in request.blocks if b.resolution != 'exclude']
+    approved = [b for b in request.blocks if b.resolution != 'exclude' and b.text.strip()]
     actual = Document(BytesIO(data))
     actual_tokens = tokens('\n'.join(p.text for p in actual.paragraphs if p.style.name != 'Heading 1'))
     expected = tokens('\n'.join(b.text for b in approved))
+    preservation = check_records(approved, parsed, actual)
+    baseline = approved_baseline(approved, request.sectionOrder)
+    before, after = baseline['readability']['score'], parsed['readability']['score']
+    new_findings = [r for r in parsed['parseCheck']['reasons'] if r not in baseline['parseCheck']['reasons']]
+    score_ok = after is not None and (before is None or after >= before)
+    formatting = inspect_section_spacing(actual)
+    quality = {'passed': preservation['passed'] and score_ok and not new_findings and formatting['passed'] and actual_tokens == expected,
+               'approvedScore': before, 'exportScore': after, 'scoreDidNotDecrease': score_ok, 'newFindings': new_findings,
+               'note': 'The export is checked against your approved edits. A lower score or changed relationships are generation problems to review, not evidence that your original resume is worse.'}
     return {'result': parsed, 'coverage': coverage(request.original, approved),
             'exportPreservesApprovedWords': actual_tokens == expected,
-            'formattingCheck': inspect_section_spacing(actual),
+            'recordCheck': preservation, 'exportQuality': quality, 'formattingCheck': formatting,
             'unresolvedBlocks': [b.id for b in request.blocks if b.resolution == 'pending' and b.text.strip()],
             'document': build_document_model(request.blocks, request.sectionOrder),
             'template': TEMPLATES[request.templateId],

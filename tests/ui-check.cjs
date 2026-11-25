@@ -34,7 +34,9 @@ from fastapi.testclient import TestClient
 from backend.main import app
 from backend.parser import group_sections
 r=json.load(sys.stdin)
-if r['path']=='fixture':
+if r['path']=='fixture_structured':
+ print(json.dumps(group_sections('Taylor\\nMorgan\\ntaylor@example.com\\nEducation\\nMaster of Science in Computer\\nScience (SMU, Dallas)')))
+elif r['path']=='fixture':
  print(json.dumps(group_sections('Taylor Example\\ntaylor@example.com\\nEXPERIENCE\\nQA Engineer | Sample Labs | 2022 - Present\\n- Built tests.\\nQA Analyst | Sample Systems | 2020 - 2022\\n- Reviewed releases.\\nSKILLS\\nPython, SQL\\nREFERENCES\\nAn important unplaced sentence.')))
 else:
  with TestClient(app) as c:
@@ -43,11 +45,12 @@ else:
 `
 function api(path,body){return JSON.parse(cp.execFileSync(py,['-c',bridge],{cwd:repo,input:JSON.stringify({path,body}),stdio:['pipe','pipe','ignore'],encoding:'utf8'}))}
 const calls=[]
-let failSpacing=false
+let failSpacing=false, failRecords=false
 global.fetch=async(url,options={})=>{
  const pathname=new URL(url,'https://test.local').pathname; calls.push(pathname)
  const r=api(pathname,options.body?JSON.parse(options.body):undefined)
  if(failSpacing && pathname==='/review/preview') r.body.formattingCheck.passed=false
+ if(failRecords && pathname==='/review/preview') {r.body.recordCheck.passed=false;r.body.exportQuality.passed=false}
  return new Response(JSON.stringify(r.body),{status:r.status,headers:{'Content-Type':'application/json'}})
 }
 const React=require(repo+'/node_modules/react'), {act}=React
@@ -101,12 +104,33 @@ async function run(){
  assert(button('Download editable DOCX').disabled)
  assert(document.body.textContent.includes('Section spacing'))
  assert(!calls.some(p=>p.includes('/ai')))
+ failSpacing=false
+ await act(async()=>{root.render(React.createElement(Review,{key:'structured',result:api('fixture_structured'),demoMode:false}));await new Promise(r=>setTimeout(r,10))})
+ await click(button('Review & create DOCX'))
+ assert(document.querySelectorAll('.repair-suggestion').length>=2)
+ await click(button('Apply formatting repair'))
+ assert([...document.querySelectorAll('textarea')].some(t=>t.value.startsWith('Taylor Morgan')))
+ await click(button('Apply formatting repair'))
+ assert([...document.querySelectorAll('textarea')].some(t=>t.value.includes('Computer Science')))
+ await click(button('Refresh fields & suggestions'))
+ await click(button('Use these field assignments'))
+ await click(button('Build preview & reparse DOCX'))
+ assert(document.body.textContent.includes('Export checks passed'))
+ assert(document.querySelector('.resume-name').textContent==='Taylor Morgan')
+ const approveStructured=[...document.querySelectorAll('input[type=checkbox]')].find(e=>e.parentElement.textContent.includes('approve this copy'))
+ await click(approveStructured)
+ assert(!button('Download editable DOCX').disabled)
+ failRecords=true
+ await click(button('Build / refresh preview'))
+ await click([...document.querySelectorAll('input[type=checkbox]')].find(e=>e.parentElement.textContent.includes('approve this copy')))
+ assert(button('Download editable DOCX').disabled)
+ assert(document.body.textContent.includes('The generated copy needs correction'))
  await act(async()=>{root.render(React.createElement(Score,{value:{...result.readability,score:98,status:'needs_review'}}))})
  assert(document.querySelector('.parse-check--needs_review'))
  assert(document.body.textContent.includes('What it takes to get green'))
  await act(async()=>{root.render(React.createElement(Score,{value:{...result.readability,score:54,status:'needs_attention'}}))})
  assert(document.querySelector('.parse-check--needs_attention'))
  await act(async()=>root.unmount())
- console.log(JSON.stringify({passed:true,checks:['template selection','section order','entry order','pending placement blocks download','explicit keep decision','approval','exact preview download','template invalidates approval','failed spacing blocks download','no AI calls','98 yellow explanation','54 red state']}))
+ console.log(JSON.stringify({passed:true,checks:['template selection','section order','entry order','pending placement blocks download','explicit keep decision','approval','exact preview download','template invalidates approval','failed spacing blocks download','full-name repair','education repair','field assignment and refresh','record failure blocks download','no AI calls','98 yellow explanation','54 red state']}))
 }
 run().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>fs.rmSync(compiled,{recursive:true,force:true}))

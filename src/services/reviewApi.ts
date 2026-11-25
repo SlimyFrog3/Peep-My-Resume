@@ -2,7 +2,7 @@ import { isParseResult } from './parserApi'
 import type { ExportPreview, ReviewBlock, SectionKey, TemplateId, ResumeTemplate } from '../types/ParseResult'
 
 const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
-const clean = (blocks: ReviewBlock[]) => blocks.map(({ id, section, text, resolution }) => ({ id, section, text, resolution: resolution ?? 'include' }))
+const clean = (blocks: ReviewBlock[]) => blocks.map(({ id, section, text, resolution, record }) => ({ id, section, text, record: record ?? null, resolution: resolution ?? 'include' }))
 
 async function request(path: string, body?: unknown): Promise<Response> {
   const controller = new AbortController()
@@ -33,14 +33,21 @@ export async function getTemplates(): Promise<ResumeTemplate[]> {
   if (!Array.isArray(data.templates) || data.templates.length !== 3) throw new Error('The style list could not be loaded.')
   return data.templates
 }
+export async function prepareRecords(original: ReviewBlock[], blocks: ReviewBlock[]): Promise<ReviewBlock[]> {
+  const data = await (await request('/review/prepare', { original: clean(original), blocks: clean(blocks) })).json()
+  if (!Array.isArray(data.blocks)) throw new Error('Unexpected record response. Check the deployed versions.');
+  return data.blocks.map((block: ReviewBlock) => ({ ...block, source: blocks.find(b => b.id === block.id)?.source }))
+}
 export async function previewResume(original: ReviewBlock[], blocks: ReviewBlock[], templateId: TemplateId, sectionOrder: SectionKey[]): Promise<ExportPreview> {
   const data = await (await request('/review/preview', { original: clean(original), blocks: clean(blocks), templateId, sectionOrder })).json()
   if (!isParseResult(data.result) || typeof data.coverage?.retainedPercent !== 'number'
     || typeof data.exportPreservesApprovedWords !== 'boolean' || !Array.isArray(data.unresolvedBlocks)
+    || typeof data.recordCheck?.passed !== 'boolean' || typeof data.exportQuality?.passed !== 'boolean'
     || typeof data.formattingCheck?.passed !== 'boolean' || !Array.isArray(data.document?.sections) || typeof data.docxBase64 !== 'string') throw new Error('Unexpected preview response. Check the deployed frontend and backend versions.')
   return data
 }
 export function downloadPreview(preview: ExportPreview) {
+  if (!preview.exportQuality.passed || !preview.recordCheck.passed || !preview.exportPreservesApprovedWords || !preview.formattingCheck.passed || preview.unresolvedBlocks.length) throw new Error('The generated copy needs correction before download.')
   const bytes = Uint8Array.from(atob(preview.docxBase64), c => c.charCodeAt(0))
   const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
   const url = URL.createObjectURL(blob)
