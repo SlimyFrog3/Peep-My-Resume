@@ -37,7 +37,7 @@ export async function previewResume(original: ReviewBlock[], blocks: ReviewBlock
   const data = await (await request('/review/preview', { original: clean(original), blocks: clean(blocks), templateId, sectionOrder })).json()
   if (!isParseResult(data.result) || typeof data.coverage?.retainedPercent !== 'number'
     || typeof data.exportPreservesApprovedWords !== 'boolean' || !Array.isArray(data.unresolvedBlocks)
-    || !Array.isArray(data.document?.sections) || typeof data.docxBase64 !== 'string') throw new Error('Unexpected preview response. Check the deployed frontend and backend versions.')
+    || typeof data.formattingCheck?.passed !== 'boolean' || !Array.isArray(data.document?.sections) || typeof data.docxBase64 !== 'string') throw new Error('Unexpected preview response. Check the deployed frontend and backend versions.')
   return data
 }
 export function downloadPreview(preview: ExportPreview) {

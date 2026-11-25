@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 from docx import Document
 from .templates import TEMPLATES, style_document, style_paragraph
-from .records import PERIOD
+from .records import PERIOD, TENURE, _period, _role
 
 SECTION_TITLES = {
     'contact': 'Contact', 'summary': 'Professional Summary', 'experience': 'Experience',
@@ -80,17 +80,23 @@ def paragraphs_for(block):
         kind = 'body'
         if bullet:
             kind, line = 'bullet', line[bullet.end():]
+        elif block.section == 'links':
+            kind = 'link'
         elif block.section == 'contact':
             kind = 'name' if i == 0 and len(line.split()) <= 6 and not re.search(r'[@\d]|https?://', line) else 'contact'
         elif block.section in {'experience', 'education', 'projects', 'certifications'}:
-            match = PERIOD.search(line)
-            if match and match.start() == 0 and not line[match.end():].strip():
+            match = _period(line.strip())
+            if match and match.start() == 0:
                 kind = 'date'
-            elif i == 0:
+            elif i == 0 or (_role(line.strip()) and i + 1 < len(block.text.splitlines()) and _period(block.text.splitlines()[i+1].strip())):
                 kind = 'entry'
+            elif TENURE.fullmatch(line.strip()):
+                kind = 'tenure'
+        if kind == 'body' and line.strip().endswith(':') and len(line.split()) <= 9:
+            kind = 'subheading'
         # Join obvious wrapped prose only. No rewriting, fact filling or truncation.
         if (kind == 'body' and output and output[-1]['kind'] in {'body', 'bullet'}
-                and line[:1].islower() and output[-1]['text'] and
+                and not re.match(r'^(?:https?://|www\.)', line, re.I) and line[:1].islower() and output[-1]['text'] and
                 not output[-1]['text'].endswith(('.', '!', '?', ';', ':'))):
             output[-1]['text'] += ' ' + line
         else:
@@ -130,6 +136,24 @@ def export_docx(blocks, template_id='classic', section_order=None):
     return stream.getvalue()
 
 
+def inspect_section_spacing(doc):
+    headings = [p for p in doc.paragraphs if p.style.name == 'Heading 1']
+    checks = []
+    for p in headings:
+        before = p.paragraph_format.space_before
+        if before is None:
+            before = p.style.paragraph_format.space_before
+        after = p.paragraph_format.space_after
+        if after is None:
+            after = p.style.paragraph_format.space_after
+        checks.append({'heading': p.text, 'beforePt': before.pt if before is not None else 0,
+                       'afterPt': after.pt if after is not None else 0,
+                       'keptWithNext': p.paragraph_format.keep_with_next if p.paragraph_format.keep_with_next is not None else p.style.paragraph_format.keep_with_next})
+    return {'passed': all(c['beforePt'] >= 18 and c['afterPt'] >= 8 and c['keptWithNext'] for c in checks),
+            'headingCount': len(checks), 'checks': checks,
+            'note': 'Checks actual DOCX heading tags, minimum spacing and keep-with-next. It does not certify correct field associations.'}
+
+
 def preview_export(request):
     from .parser import parse_resume
     import base64
@@ -141,6 +165,7 @@ def preview_export(request):
     expected = tokens('\n'.join(b.text for b in approved))
     return {'result': parsed, 'coverage': coverage(request.original, approved),
             'exportPreservesApprovedWords': actual_tokens == expected,
+            'formattingCheck': inspect_section_spacing(actual),
             'unresolvedBlocks': [b.id for b in request.blocks if b.resolution == 'pending' and b.text.strip()],
             'document': build_document_model(request.blocks, request.sectionOrder),
             'template': TEMPLATES[request.templateId],

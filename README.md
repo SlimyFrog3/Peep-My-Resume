@@ -1,10 +1,18 @@
-# Peep My Resume Beta 4.0.1
+# Peep My Resume Beta 4.0.2
 
 Upload a PDF or DOCX to see how our parser reads it, review the readability score, arrange your content, and export an editable resume in one of three styles.
 
-Start with [REDEPLOY.md](REDEPLOY.md), [PATCH_NOTES_4.0.1.md](PATCH_NOTES_4.0.1.md), and [SCORING.md](SCORING.md).
+Start with [REDEPLOY.md](REDEPLOY.md), [PATCH_NOTES_4.0.2.md](PATCH_NOTES_4.0.2.md), and [SCORING.md](SCORING.md).
 
-## What changed
+## What changed in 4.0.2
+
+- Date ranges followed by a parenthesized duration now parse correctly, including grouped roles under an employer heading and total tenure. Employer inheritance requires an explicit grouped-employer anchor; ordinary missing employers remain flagged.
+- Plain Education keeps its own college credentials. Recognized subject/program descriptions are separate from awarded qualifications; no degree is inferred. Rubric 1.1 accepts a school/program association, with the same 30/25/25/20 weights.
+- Profile URLs stay in separate paragraphs, including lowercase links. Older paragraphs containing only multiple URLs no longer create a false Other warning.
+- Every template has more space around sections, jobs and short subheadings. Actual DOCX heading spacing is checked before download, independently from the parsing score.
+- The supplied test PDF and fresh exports in all three styles each scored 100 locally after the parser fixes. A fresh export is needed; existing downloaded files are not changed. This result is not a guarantee for other resumes or employer ATS systems.
+
+## Features retained from 4.0.1
 
 - Green requires at least 90/100 and no unresolved parser findings. Yellow covers other assessable scores from 55 upward. Scores below 55 are red. A checklist below the bar explains what remains before green.
 - “What’s working well” highlights observed strengths. Absent record types are labeled not assessed rather than praised.
@@ -44,13 +52,13 @@ Open Vite's Local URL, normally http://localhost:5173. Both terminals stay runni
 5. Arrange whole sections with section arrows. Arrange entries within a section with entry arrows. Use the dropdown to move an entry to a different section.
 6. Edit source text and verify names, dates, achievements and associations against the original. Insert blank lines to split mixed content into separate entries.
 7. Resolve “Needs placement” blocks. You can include them under Additional Information or exclude them explicitly. Nothing is silently thrown away.
-8. Build the preview. The backend creates the actual DOCX, reparses it and checks approved word preservation. Pending text is included in the preview for inspection but blocks download until resolved.
+8. Build the preview. The backend creates the actual DOCX, reparses it and checks approved word preservation and real DOCX section spacing. Pending text is included in the preview for inspection but blocks download until resolved.
 9. Inspect the original/new scores and word additions/omissions. A simpler layout does not guarantee a higher score.
 10. Approve the content and any additions/omissions, then download. The browser downloads the exact DOCX bytes returned with that preview.
 
 Changing content, section order, entry order or template clears the preview and approvals. The selected template controls typography and spacing; it does not rearrange sections. Long content gains pages naturally. The browser preview matches the content model and style settings, but Word/LibreOffice determine exact page breaks and font substitution.
 
-PDF export is deferred. Examples/classic-style.docx, modern-style.docx and compact-style.docx contain the same fictional resume in each style. Examples/template-sample.json is editable sample data.
+PDF export is deferred. examples/classic-style.docx, modern-style.docx and compact-style.docx contain the same fictional resume in each style. examples/template-sample.json is editable sample data.
 
 ## How the code connects
 

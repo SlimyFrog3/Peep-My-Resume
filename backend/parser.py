@@ -223,6 +223,7 @@ def _classify(main, sidebar, embedded=(), notes=(), issues=()):
     for flow in (main, sidebar):
         start_experience = len(groups['experience'])
         current = None
+        mixed_education = False
         opening = True
         preamble_count = 0
         for i, source in enumerate(flow):
@@ -231,6 +232,7 @@ def _classify(main, sidebar, embedded=(), notes=(), issues=()):
             line = source.text.strip()
             section, remainder = section_heading(line)
             if section:
+                mixed_education = section == 'education' and 'cert' in heading_key(line)
                 opening = False
                 if not remainder:
                     current = section
@@ -256,7 +258,7 @@ def _classify(main, sidebar, embedded=(), notes=(), issues=()):
                         preamble_count += 1
                     else:
                         current, opening, destination = 'summary', False, 'summary'
-            if destination == 'education' and re.search(r'\b(?:certified|certification|ISTQB|ITIL|PMP|Six Sigma)\b', source.text, re.I) and not re.search(r'\b(?:master|bachelor|diploma|degree)\b', source.text, re.I):
+            if destination == 'education' and mixed_education and re.search(r'\b(?:certified|certification|ISTQB|ITIL|PMP|Six Sigma)\b', source.text, re.I) and not re.search(r'\b(?:master|bachelor|diploma|degree)\b', source.text, re.I):
                 destination = 'certifications'
             if destination == 'languages':
                 # Keep unrecognized entries reviewable rather than assuming a language.

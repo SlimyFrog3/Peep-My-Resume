@@ -42,10 +42,10 @@ def record_findings(jobs, unassigned, education, other):
             'experience',
         ))
 
-    if any(not record['institution'] or not record['qualification'] for record in education):
+    if any(not record['institution'] or not (record['qualification'] or record.get('program')) for record in education):
         findings.append(finding(
-            'The parser could not identify a school or qualification in one or more Education entries.',
-            'Open “View source” on the affected entry. If the school or qualification is abbreviated or split across the page, try listing the full school name and degree, diploma, or program together.',
+            'The parser could not identify a school or qualification/program in one or more Education entries.',
+            'Open “View source” on the affected entry. If the school or qualification/program is abbreviated or split across the page, try listing the full school name and degree, diploma, or program together.',
             'education',
         ))
     if other:

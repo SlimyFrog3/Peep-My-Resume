@@ -8,8 +8,10 @@ DATE = rf'(?:(?:{MONTH})\s+|\d{{1,2}}/)?(?:19|20)\d{{2}}(?:-(?:0[1-9]|1[0-2]))?'
 PERIOD = re.compile(rf'(?<!\w)(?P<start>{DATE})\s*(?:[-–—]|\bto\b)\s*(?P<end>{DATE}|present|current|now|on\s*going|ongoing)\b', re.I)
 ROLE = re.compile(r'\b(?:engineer|developer|manager|director|lead|analyst|specialist|designer|instructor|consultant|coordinator|assistant|intern|architect|associate|administrator|scientist|technician|teacher|officer|founder|president|quality assurance|recruiter|accountant|nurse|operator|supervisor|representative|mentor|vp|vice president)\b', re.I)
 ACTION = re.compile(r'^(?:managed|led|built|developed|worked|provided|performed|trained|used|designed|tested|implemented|created|coordinated|oversaw|supported|signed|participated|maintained|assisted|as the|responsible)\b', re.I)
-DEGREE = re.compile(r'\b(?:bachelor|master|doctorate|associate|diploma|b\.?s|b\.?a|m\.?s|m\.?a|mba|ph\.?d)\b', re.I)
+DEGREE = re.compile(r'\b(?:bachelors?|masters?|doctorates?|associates?|diplomas?|b\.?s|b\.?a|m\.?s|m\.?a|mba|ph\.?d)\b', re.I)
 SCHOOL = re.compile(r'\b(?:university|college|institute|school|polytechnic|academy)\b', re.I)
+TENURE = re.compile(r'(?:\d+\s+(?:years?|months?)\s*){1,2}', re.I)
+PROGRAM = re.compile(r'\b(?:pre[- ]engineering|mathematics|statistics|computer science|engineering|business|biology|physics|chemistry|economics|accounting|psychology|history|literature|nursing|design|information technology)\b', re.I)
 BULLET = re.compile(r'^\s*[•●▪◦‣*–-]\s+')
 
 
@@ -34,11 +36,17 @@ def _range(m):
 
 def _period(text):
     m = PERIOD.search(text)
-    return m if m and len(text)<=150 and not text[m.end():].strip(' )|·,') else None
+    if not m or len(text) > 180:
+        return None
+    tail = text[m.end():].strip()
+    if tail.strip(' )|·,') == '' or (tail.startswith('(') and tail.endswith(')') and TENURE.fullmatch(tail[1:-1].strip())):
+        return m
+    return None
 
 
 def _name(s):
     return bool(3<=len(s)<=95 and len(s.split())<=12 and not ACTION.search(s)
+                and not (s.endswith('.') and not re.search(r'\b(?:Inc|Co|Ltd|Corp|LLC)\.$', s, re.I))
                 and not any(c in s for c in '@<>:?!') and not s.startswith(('http','www.')))
 
 
@@ -110,17 +118,33 @@ def job_start(lines,i,explicit=False):
 
 def experience_records(lines):
     result, leftover, current, parent, i = [], [], None, None, 0
+    active_employer, group_source = None, []
     while i<len(lines):
+        # LinkedIn-style employer heading, total tenure, then dated child roles.
+        window = lines[i:i+4]
+        if (len(window) == 4 and all(line.page == window[0].page and line.region == window[0].region for line in window) and _name(window[0].text) and not _role(window[0].text)
+                and TENURE.fullmatch(window[1].text.strip()) and _role(window[2].text)
+                and (period := _period(window[3].text.strip())) and period.start() == 0):
+            active_employer = window[0].text.strip()
+            group_source = window[:2]
+            i += 2
         header = job_start(lines,i,explicit=True)
         if header:
             n,item = header
             title_first = _role(lines[i].text)
+            inherited_employer = bool(item['title'] and not item['organization'] and active_employer)
+            if inherited_employer:
+                item['organization'] = active_employer
+            elif item['organization'] and item['organization'] != active_employer:
+                # An unrelated job must not inherit a previous company's identity.
+                active_employer = None
             if not item['title']:
                 parent=item['organization']
             elif not title_first:
                 parent=None
-            item['parentOrganization'] = parent if title_first and parent!=item['organization'] else None
-            current = {**item,'source':lines[i:i+n],'body':[]}
+            item['parentOrganization'] = active_employer if inherited_employer else parent if title_first and parent!=item['organization'] else None
+            current = {**item,'source':group_source+lines[i:i+n],'body':[]}
+            group_source = []
             result.append(current)
             i+=n
             continue
@@ -129,6 +153,7 @@ def experience_records(lines):
         else:
             leftover.append(lines[i].text)
         i+=1
+    leftover.extend(line.text for line in group_source)
     parents = {item['parentOrganization'] for item in result if item['parentOrganization']}
     for item in result:
         item['isEmployerOverview'] = not item['title'] and item['organization'] in parents
@@ -144,7 +169,7 @@ def education_records(lines):
         text = BULLET.sub('',line.text).strip()
         is_degree,is_school = bool(DEGREE.search(text)),bool(SCHOOL.search(text))
         if current is None or (is_degree and current['qualification']) or (is_school and current['institution'] and not is_degree):
-            current={'institution':None,'qualification':None,'date':None,'notes':[],'source':[]}
+            current={'institution':None,'qualification':None,'program':None,'date':None,'notes':[],'source':[]}
             result.append(current)
         prev = current['source'][-1] if current['source'] else None
         current['source'].append(line)
@@ -170,6 +195,12 @@ def education_records(lines):
             current['institution']=text[:suffix.start()].rstrip(' ,|·–-') if suffix else text
             if suffix:
                 current['date']=date_value(re.sub(r'^expected\s+', '', suffix[1], flags=re.I))
+        elif current['institution'] and not current['qualification'] and not current['program'] and len(text) < 180 and PROGRAM.search(text) and not ACTION.search(text):
+            # A field of study is not proof that a degree was awarded.
+            current['program'] = text
+            period = PERIOD.search(text)
+            if period:
+                current['date'] = date_value(period['end'])
         elif re.fullmatch(rf'(?:expected\s+)?{DATE}',text,re.I):
             current['date']=date_value(re.sub(r'^expected\s+', '', text, flags=re.I))
         elif current['qualification'] and not current['institution'] and adjacent(prev,line,max_dx=5,max_dy=18):

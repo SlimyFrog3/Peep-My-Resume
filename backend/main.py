@@ -9,7 +9,7 @@ from .parser import parse_resume, ParseError, MAX_BYTES
 from .workflow import ReviewRequest, preview_export, export_docx
 from .templates import TEMPLATES
 
-VERSION = '4.0.1-beta'
+VERSION = '4.0.2-beta'
 app = FastAPI(title='Peep-My-Resume API', version=VERSION)
 
 @app.middleware('http')
@@ -52,7 +52,7 @@ async def parse(file: UploadFile = File(...)):
 
 @app.get('/capabilities')
 def capabilities():
-    return {'docxExport': True, 'templates': list(TEMPLATES), 'rubricVersion': '1.0'}
+    return {'docxExport': True, 'templates': list(TEMPLATES), 'rubricVersion': '1.1'}
 
 
 @app.get('/templates')

@@ -31,8 +31,9 @@ export default function ParseResults({ result, fileName, demoMode }: Props) {
       </Group>
       if (key === 'education' && result.educationRecords.length) return <Group key={key} title={title} id="review-education">
         {result.educationRecords.map((record, i) => <article className="record" key={i}>
-          <h4>{record.qualification || 'Qualification not identified'}</h4>
+          <h4>{record.qualification || record.program || 'Qualification/program not identified'}</h4>
           <p>{[record.institution || 'School not identified', record.date?.value].filter(Boolean).join(' · ')}</p>
+          {record.program && !record.qualification && <p>Program / area of study; no degree inferred.</p>}
           <Items items={record.notes} />
           <Source lines={record.source} />
         </article>)}

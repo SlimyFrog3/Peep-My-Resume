@@ -1,7 +1,7 @@
 // Only used when VITE_USE_MOCK=true; live uploads never use sample results.
 import type { ParseResult } from './types/ParseResult'
 export const sampleResult: ParseResult = {
-  readability: { score: 100, status: 'looks_good', rubricVersion: '1.0',
+  readability: { score: 100, status: 'looks_good', rubricVersion: '1.1',
     categories: [], note: 'Sample score only. Upload a file for real checks.' },
   reviewBlocks: [
     { id: 'b1', section: 'contact', text: 'Jordan Lee\njordan.lee@example.com\nPhoenix, AZ' },

@@ -1,7 +1,7 @@
 """Versioned, deterministic readability checks, not a hiring prediction."""
 import re
 
-RUBRIC_VERSION = '1.0'
+RUBRIC_VERSION = '1.1'
 
 
 def score_result(result):
@@ -22,7 +22,7 @@ def score_result(result):
         if not job.get('isEmployerOverview'):
             fields.extend(bool(job[k]) for k in ('title', 'organization', 'dates'))
     for edu in result['educationRecords']:
-        fields.extend(bool(edu[k]) for k in ('institution', 'qualification'))
+        fields.extend([bool(edu['institution']), bool(edu['qualification'] or edu.get('program'))])
     associations = sum(fields) / len(fields) if fields else 1
     if result['experience']:
         unassigned = sum(len(x) for x in result['unassignedExperience'])
@@ -39,7 +39,7 @@ def score_result(result):
         {'key': 'sections', 'label': 'Section separation', 'earned': classification, 'possible': 25,
          'detail': 'Checks the proportion left unclassified or likely prose inside Contact.'},
         {'key': 'records', 'label': 'Record associations', 'earned': organization, 'possible': 25,
-         'detail': 'Checks detected job titles, employers and dates, school and qualification pairs, and unassigned experience. Absent optional sections are not deducted.'},
+         'detail': 'Checks detected job titles, employers and dates, school and qualification/program pairs, and unassigned experience. Absent optional sections are not deducted.'},
         {'key': 'contact', 'label': 'Contact and links', 'earned': contact, 'possible': 20,
          'detail': '10 points for a detected email or phone; 10 for no detected incomplete profile links. Links are optional.'},
     ]

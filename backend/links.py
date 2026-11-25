@@ -41,7 +41,12 @@ def recover_links(flows, embedded):
             add(value,[line],'embedded')
     for lines in flows:
         for i,line in enumerate(lines):
-            for m in LINK.finditer(line.text):
+            matches = list(LINK.finditer(line.text))
+            if matches and not LINK.sub('', line.text).strip(' .,;|()'):
+                values = [url_value(m[0]) for m in matches]
+                if all(values) and all(add(value, [line], 'visible text') for value in values):
+                    skipped.add(line)
+            for m in matches:
                 value = url_value(m[0])
                 if not value:
                     continue

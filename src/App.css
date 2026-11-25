@@ -155,17 +155,17 @@ button:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visi
 .excluded-block { border-style: dashed; background: #f7f5f8 !important; }
 .entry-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .review-dialog .resume-paper { box-sizing: border-box; width: 100%; max-width: 8.5in; margin: 20px auto; padding: var(--resume-margin); font-family: var(--resume-font), Arial, sans-serif; color: #252525; }
-.review-dialog .resume-paper h3 { color: var(--resume-accent); font-size: var(--resume-heading); margin: var(--resume-before) 0 6pt; line-height: 1.15; font-weight: 700; }
+.review-dialog .resume-paper h3 { color: var(--resume-accent); font-size: var(--resume-heading); margin: var(--resume-before) 0 8pt; line-height: 1.15; font-weight: 700; }
 .review-dialog .resume-paper p { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: var(--resume-body); line-height: var(--resume-line); color: #252525; margin: 0 0 var(--resume-after); }
 .review-dialog .resume-paper .resume-name { font-size: var(--resume-name); color: var(--resume-accent); line-height: 1.15; margin-bottom: 5pt; font-weight: 400; }
-.review-dialog .resume-paper .resume-entry { font-weight: 700; margin-top: 8pt; }
-.review-dialog .resume-paper .resume-date { font-size: 10pt; color: #606060; }
+.review-dialog .resume-paper .resume-entry { font-weight: 700; margin-top: 12pt; }
+.review-dialog .resume-paper .resume-date { font-size: max(10pt, calc(var(--resume-body) - .5pt)); color: #606060; }
 .review-dialog .resume-paper .resume-bullet { padding-left: .18in; text-indent: -.12in; }
 .review-dialog .resume-paper .resume-space { min-height: 1em; }
 .review-dialog .resume-style-compact .resume-name { font-weight: 700; }
 .review-dialog .resume-style-compact .resume-name, .review-dialog .resume-style-compact .resume-contact { text-align: center; }
 .review-dialog .resume-style-compact h3 { text-transform: uppercase; }
-.review-dialog .resume-style-compact .resume-entry { margin-top: 5pt; }
+.review-dialog .resume-style-compact .resume-entry { margin-top: 10pt; }
 @media (max-width: 650px) {
   .template-grid { grid-template-columns: 1fr; }
   .template-card { display: grid; grid-template-columns: 95px 1fr; align-items: start; }
@@ -184,3 +184,8 @@ button:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visi
 .review-dialog .resume-style-modern .resume-name { font-weight: 700; }
 .template-card img.template-thumbnail { display: block; padding: 0; min-height: 0; width: 100%; aspect-ratio: 8.5 / 11; object-fit: contain; }
 @media (max-width: 650px) { .template-card img.template-thumbnail { grid-row: span 4; } }
+
+/* 4.0.2: readable spacing floors across every template */
+.review-dialog .resume-paper .resume-subheading { font-weight: 700; margin-top: 9pt; }
+.review-dialog .resume-paper .resume-tenure { font-size: 10pt; color: #606060; }
+.review-dialog .resume-paper .resume-link { overflow-wrap: anywhere; }

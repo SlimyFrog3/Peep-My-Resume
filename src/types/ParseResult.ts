@@ -41,7 +41,7 @@ export type JobRecord = {
   description: string[]
   source: SourceLine[]
 }
-export type EducationRecord = { institution: string | null; qualification: string | null; date: DateValue | null; notes: string[]; source: SourceLine[] }
+export type EducationRecord = { institution: string | null; qualification: string | null; program?: string | null; date: DateValue | null; notes: string[]; source: SourceLine[] }
 export type CertificationRecord = { name: string; status: string | null; description: string[]; source: SourceLine[] }
 export type LinkRecord = { url: string; method: string; source: SourceLine[] }
 
@@ -55,6 +55,7 @@ export type ExportPreview = {
   result: ParseResult
   coverage: { retainedPercent: number; removedTokenCount: number; addedTokenCount: number; removedExamples: string[]; addedExamples: string[]; note: string }
   exportPreservesApprovedWords: boolean
+  formattingCheck: { passed: boolean; headingCount: number; checks: { heading: string; beforePt: number; afterPt: number; keptWithNext: boolean }[]; note: string }
   unresolvedBlocks: string[]
   document: ResumeDocument
   template: ResumeTemplate
@@ -62,5 +63,5 @@ export type ExportPreview = {
 }
 export type TemplateId = 'classic' | 'modern' | 'compact'
 export type ResumeTemplate = { id: TemplateId; name: string; caption: string; font: string; bodyPt: number; namePt: number; headingPt: number; accent: string; margin: number; paragraphAfter: number; headingBefore: number; lineSpacing: number }
-export type ResumeParagraph = { kind: 'name' | 'contact' | 'heading' | 'entry' | 'date' | 'body' | 'bullet' | 'space'; text: string }
+export type ResumeParagraph = { kind: 'name' | 'contact' | 'heading' | 'entry' | 'date' | 'body' | 'bullet' | 'space' | 'link' | 'tenure' | 'subheading'; text: string }
 export type ResumeDocument = { sections: { key: SectionKey; title: string; blocks: { id: string; paragraphs: ResumeParagraph[] }[] }[] }

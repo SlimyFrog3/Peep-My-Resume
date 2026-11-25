@@ -60,7 +60,7 @@ export default function ResumeReview({ result, demoMode }: { result: ParseResult
   }
   const changed = preview && (preview.coverage.removedTokenCount > 0 || preview.coverage.addedTokenCount > 0)
   const pending = blocks.filter(b => b.resolution === 'pending' && b.text.trim())
-  const canDownload = preview?.exportPreservesApprovedWords && !preview.unresolvedBlocks.length && approved && (!changed || changesAccepted)
+  const canDownload = preview?.exportPreservesApprovedWords && preview.formattingCheck.passed && !preview.unresolvedBlocks.length && approved && (!changed || changesAccepted)
   return <div className="review-launch">
     <h3>Make a cleaner copy</h3><p>Choose a style, arrange your sections, and review every word before exporting an editable DOCX.</p>
     <button className="primary" disabled={demoMode} onClick={() => dialog.current?.showModal()}>Review &amp; create DOCX</button>
@@ -131,6 +131,11 @@ export default function ResumeReview({ result, demoMode }: { result: ParseResult
               {!preview.exportPreservesApprovedWords && <p className="error">The export did not preserve the approved words. Download is blocked; return to editing and report the issue.</p>}
             </div>
             {preview.unresolvedBlocks.length > 0 && <p className="placement-notice">This preview includes unplaced text under Additional Information. Resolve its placement in the editor before downloading.</p>}
+            <div className="content-check"><strong>{preview.formattingCheck.passed ? 'Section spacing verified' : 'Section spacing needs attention'}</strong>
+              <p>{preview.formattingCheck.headingCount} section headings checked in the actual DOCX for clear spacing above and below. Each heading stays with its following paragraph.</p>
+              <p>{preview.formattingCheck.note}</p>
+              {!preview.formattingCheck.passed && <p className="error">Download is blocked because the generated file failed its section-spacing check. Rebuild the preview; if it persists, report the issue.</p>}
+            </div>
             <h3>{preview.template.name}</h3>
             <ResumeDocumentPreview document={preview.document} template={preview.template} />
             <p>Content, section order and styling match this DOCX. Word controls exact pagination and font substitution.</p>

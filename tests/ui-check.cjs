@@ -43,9 +43,11 @@ else:
 `
 function api(path,body){return JSON.parse(cp.execFileSync(py,['-c',bridge],{cwd:repo,input:JSON.stringify({path,body}),stdio:['pipe','pipe','ignore'],encoding:'utf8'}))}
 const calls=[]
+let failSpacing=false
 global.fetch=async(url,options={})=>{
  const pathname=new URL(url,'https://test.local').pathname; calls.push(pathname)
  const r=api(pathname,options.body?JSON.parse(options.body):undefined)
+ if(failSpacing && pathname==='/review/preview') r.body.formattingCheck.passed=false
  return new Response(JSON.stringify(r.body),{status:r.status,headers:{'Content-Type':'application/json'}})
 }
 const React=require(repo+'/node_modules/react'), {act}=React
@@ -92,6 +94,12 @@ async function run(){
  await click(document.querySelector('.template-compact'))
  await click(button('2. Preview & compare'))
  assert(![...document.querySelectorAll('button')].some(b=>b.textContent==='Download editable DOCX'))
+ failSpacing=true
+ await click(button('Build / refresh preview'))
+ const reapprove=[...document.querySelectorAll('input[type=checkbox]')].find(e=>e.parentElement.textContent.includes('approve this copy'))
+ await click(reapprove)
+ assert(button('Download editable DOCX').disabled)
+ assert(document.body.textContent.includes('Section spacing'))
  assert(!calls.some(p=>p.includes('/ai')))
  await act(async()=>{root.render(React.createElement(Score,{value:{...result.readability,score:98,status:'needs_review'}}))})
  assert(document.querySelector('.parse-check--needs_review'))
@@ -99,6 +107,6 @@ async function run(){
  await act(async()=>{root.render(React.createElement(Score,{value:{...result.readability,score:54,status:'needs_attention'}}))})
  assert(document.querySelector('.parse-check--needs_attention'))
  await act(async()=>root.unmount())
- console.log(JSON.stringify({passed:true,checks:['template selection','section order','entry order','pending placement blocks download','explicit keep decision','approval','exact preview download','template invalidates approval','no AI calls','98 yellow explanation','54 red state']}))
+ console.log(JSON.stringify({passed:true,checks:['template selection','section order','entry order','pending placement blocks download','explicit keep decision','approval','exact preview download','template invalidates approval','failed spacing blocks download','no AI calls','98 yellow explanation','54 red state']}))
 }
 run().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>fs.rmSync(compiled,{recursive:true,force:true}))
